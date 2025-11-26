@@ -43,6 +43,41 @@ class DeployController extends Controller
     }
 
     /**
+     * Найти Git репозиторий
+     */
+    protected function findGitRepository(): ?string
+    {
+        // Проверяем переменную окружения
+        $gitPath = env('GIT_REPO_PATH');
+        if ($gitPath && is_dir($gitPath . '/.git')) {
+            return $gitPath;
+        }
+
+        // Проверяем в base_path (текущая директория Laravel)
+        $basePath = base_path();
+        if (is_dir($basePath . '/.git')) {
+            return $basePath;
+        }
+
+        // Проверяем в родительской директории
+        $parentPath = dirname($basePath);
+        if (is_dir($parentPath . '/.git')) {
+            return $parentPath;
+        }
+
+        // Проверяем в ~/essens
+        $homePath = getenv('HOME') ?: getenv('USERPROFILE');
+        if ($homePath) {
+            $essensPath = $homePath . '/essens';
+            if (is_dir($essensPath . '/.git')) {
+                return $essensPath;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Найти исполняемый файл PHP
      */
     protected function findPhpExecutable(string $name): ?string
@@ -100,8 +135,10 @@ class DeployController extends Controller
                 'timestamp' => $timestamp,
                 'ip' => $request->ip(),
             ]);
-            // Проверяем, что мы в git репозитории
-            if (!is_dir(base_path('.git'))) {
+            // Определяем путь к Git репозиторию
+            $gitRepoPath = $this->findGitRepository();
+            
+            if (!$gitRepoPath) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Git репозиторий не найден',
@@ -110,14 +147,14 @@ class DeployController extends Controller
 
             // Получаем текущую ветку
             $currentBranchProcess = new Process(['git', 'branch', '--show-current']);
-            $currentBranchProcess->setWorkingDirectory(base_path());
+            $currentBranchProcess->setWorkingDirectory($gitRepoPath);
             $currentBranchProcess->run();
             $currentBranch = trim($currentBranchProcess->getOutput()) ?: $branch;
 
             // Если указанная ветка отличается от текущей, переключаемся
             if ($currentBranch !== $branch) {
                 $checkoutProcess = new Process(['git', 'checkout', $branch]);
-                $checkoutProcess->setWorkingDirectory(base_path());
+                $checkoutProcess->setWorkingDirectory($gitRepoPath);
                 $checkoutProcess->setTimeout(60);
                 $checkoutProcess->run();
                 
@@ -136,7 +173,7 @@ class DeployController extends Controller
 
             // Получаем последние изменения из git
             $fetchProcess = new Process(['git', 'fetch', 'origin']);
-            $fetchProcess->setWorkingDirectory(base_path());
+            $fetchProcess->setWorkingDirectory($gitRepoPath);
             $fetchProcess->setTimeout(60);
             $fetchProcess->run();
 
@@ -148,7 +185,7 @@ class DeployController extends Controller
 
             // Делаем pull
             $pullProcess = new Process(['git', 'pull', 'origin', $branch]);
-            $pullProcess->setWorkingDirectory(base_path());
+            $pullProcess->setWorkingDirectory($gitRepoPath);
             $pullProcess->setTimeout(300);
             $pullProcess->run();
 

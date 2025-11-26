@@ -1,0 +1,193 @@
+@import 'tailwindcss';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* Light theme - Stellar design system */
+:root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 238.7 83.1% 66.7%; /* #4f46e5 */
+    --primary-foreground: 0 0% 100%;
+    --primary-contrast: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 238.7 83.1% 66.7%;
+    --text: 214.3 31.8% 91.4%;
+    --text-muted: 215.4 16.3% 46.9%;
+    --surface: 0 0% 100%;
+    --dark-100: 0 0% 5.9%;
+    --dark-200: 0 0% 9.4%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+}
+
+/* Dark theme - Stellar design system */
+.dark,
+html.dark,
+html[data-theme="dark"] {
+    --background: 0 0% 5.9%; /* dark-100: #0f0f0f */
+    --foreground: 214.3 31.8% 91.4%; /* text: #e5e7eb */
+    --card: 0 0% 12.2%; /* surface: #1f1f1f */
+    --card-foreground: 214.3 31.8% 91.4%;
+    --popover: 0 0% 12.2%;
+    --popover-foreground: 214.3 31.8% 91.4%;
+    --primary: 238.7 83.1% 66.7%; /* #4f46e5 */
+    --primary-foreground: 0 0% 100%;
+    --primary-contrast: 0 0% 100%;
+    --secondary: 0 0% 9.4%; /* dark-200: #181818 */
+    --secondary-foreground: 214.3 31.8% 91.4%;
+    --muted: 0 0% 9.4%;
+    --muted-foreground: 215.4 16.3% 46.9%; /* text-muted: #9ca3af */
+    --accent: 0 0% 9.4%;
+    --accent-foreground: 214.3 31.8% 91.4%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 9.4%;
+    --input: 0 0% 9.4%;
+    --ring: 238.7 83.1% 66.7%;
+    --text: 214.3 31.8% 91.4%;
+    --text-muted: 215.4 16.3% 46.9%;
+    --surface: 0 0% 12.2%;
+    --dark-100: 0 0% 5.9%;
+    --dark-200: 0 0% 9.4%;
+    --sidebar-background: 0 0% 9.4%;
+    --sidebar-foreground: 214.3 31.8% 91.4%;
+    --sidebar-accent: 0 0% 12.2%;
+    --sidebar-accent-foreground: 214.3 31.8% 91.4%;
+    --sidebar-border: 0 0% 12.2%;
+}
+
+@layer base {
+    * {
+        border-color: hsl(var(--border));
+    }
+    body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+    }
+}
+
+@layer utilities {
+    .bg-background {
+        background-color: hsl(var(--background));
+    }
+    .bg-card {
+        background-color: hsl(var(--card));
+    }
+    .bg-surface {
+        background-color: hsl(var(--surface));
+    }
+    .bg-popover {
+        background-color: hsl(var(--popover));
+    }
+    .bg-primary {
+        background-color: hsl(var(--primary));
+    }
+    .bg-secondary {
+        background-color: hsl(var(--secondary));
+    }
+    .bg-muted {
+        background-color: hsl(var(--muted));
+    }
+    .bg-accent {
+        background-color: hsl(var(--accent));
+    }
+    .bg-destructive {
+        background-color: hsl(var(--destructive));
+    }
+    .bg-dark-100 {
+        background-color: hsl(var(--dark-100));
+    }
+    .bg-dark-200 {
+        background-color: hsl(var(--dark-200));
+    }
+    .bg-sidebar-background {
+        background-color: hsl(var(--sidebar-background));
+    }
+    .bg-sidebar-accent {
+        background-color: hsl(var(--sidebar-accent));
+    }
+    
+    .text-foreground {
+        color: hsl(var(--foreground));
+    }
+    .text-text {
+        color: hsl(var(--text));
+    }
+    .text-text-muted {
+        color: hsl(var(--text-muted));
+    }
+    .text-card-foreground {
+        color: hsl(var(--card-foreground));
+    }
+    .text-popover-foreground {
+        color: hsl(var(--popover-foreground));
+    }
+    .text-primary-foreground {
+        color: hsl(var(--primary-foreground));
+    }
+    .text-primary-contrast {
+        color: hsl(var(--primary-contrast));
+    }
+    .text-secondary-foreground {
+        color: hsl(var(--secondary-foreground));
+    }
+    .text-muted-foreground {
+        color: hsl(var(--muted-foreground));
+    }
+    .text-accent-foreground {
+        color: hsl(var(--accent-foreground));
+    }
+    .text-destructive-foreground {
+        color: hsl(var(--destructive-foreground));
+    }
+    .text-sidebar-foreground {
+        color: hsl(var(--sidebar-foreground));
+    }
+    .text-sidebar-accent-foreground {
+        color: hsl(var(--sidebar-accent-foreground));
+    }
+    
+    .border-border {
+        border-color: hsl(var(--border));
+    }
+    .border-input {
+        border-color: hsl(var(--input));
+    }
+    .border-ring {
+        border-color: hsl(var(--ring));
+    }
+    .border-sidebar-border {
+        border-color: hsl(var(--sidebar-border));
+    }
+    .border-dark-200 {
+        border-color: hsl(var(--dark-200));
+    }
+    
+    .ring-ring {
+        --tw-ring-color: hsl(var(--ring));
+    }
+}
+
+/* Убеждаемся, что темная тема применяется ко всем элементам */
+.dark * {
+    color-scheme: dark;
+}

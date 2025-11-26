@@ -314,13 +314,17 @@
                         <!-- Webhook Tab -->
                         <div v-if="activeTab === 'webhook'" class="space-y-4 mt-4">
                             <div>
-                                <label class="text-sm font-medium mb-1 block">URL Webhook</label>
+                                <label class="text-sm font-medium mb-1 block">Домен (например: essens-store.ru)</label>
                                 <input
-                                    v-model="webhookForm.url"
-                                    type="url"
+                                    v-model="webhookForm.domain"
+                                    type="text"
                                     class="w-full h-10 px-3 border border-border rounded bg-background"
-                                    placeholder="https://example.com/webhook"
+                                    placeholder="essens-store.ru"
+                                    @input="updateWebhookUrl"
                                 />
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    URL будет автоматически сформирован: {{ webhookForm.url || 'https://ваш-домен.ru/api/telegram/webhook/{token}' }}
+                                </p>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
@@ -511,6 +515,7 @@ export default {
                 },
             },
             webhookForm: {
+                domain: '',
                 url: '',
                 max_connections: 40,
                 ip_address: '',
@@ -538,6 +543,14 @@ export default {
     },
     mounted() {
         this.loadBots();
+        // Устанавливаем домен по умолчанию из текущего URL
+        if (!this.webhookForm.domain) {
+            const hostname = window.location.hostname;
+            if (hostname && hostname !== 'localhost') {
+                this.webhookForm.domain = hostname;
+                this.updateWebhookUrl();
+            }
+        }
     },
     methods: {
         async loadBots() {
@@ -595,6 +608,8 @@ export default {
                 name: bot.name,
                 token: bot.token,
             };
+            // Обновляем URL webhook при выборе бота
+            this.updateWebhookUrl();
         },
         async getBotInfo(id) {
             try {
@@ -738,7 +753,23 @@ export default {
                 this.error = error.response?.data?.message || 'Ошибка при получении меню';
             }
         },
+        updateWebhookUrl() {
+            if (this.webhookForm.domain && this.selectedBot?.token) {
+                // Убираем протокол и слеши, если есть
+                let domain = this.webhookForm.domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+                // Формируем полный URL
+                this.webhookForm.url = `https://${domain}/api/telegram/webhook/${this.selectedBot.token}`;
+            } else if (this.webhookForm.domain) {
+                // Если токена еще нет, показываем шаблон
+                let domain = this.webhookForm.domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+                this.webhookForm.url = `https://${domain}/api/telegram/webhook/{token}`;
+            } else {
+                this.webhookForm.url = '';
+            }
+        },
         async setWebhook(id) {
+            // Обновляем URL перед отправкой
+            this.updateWebhookUrl();
             try {
                 const formData = new FormData();
                 formData.append('url', this.webhookForm.url);

@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Route;
 // Доступен по адресу: /api/deploy
 Route::post('/deploy', [\App\Http\Controllers\DeployController::class, 'deploy']);
 
+// Telegram webhook endpoint (публичный, для получения обновлений от Telegram)
+Route::post('/telegram/webhook/{token}', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'handle']);
+
 // Публичные роуты
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);

@@ -13,6 +13,10 @@ use App\Http\Controllers\Api\Admin\ParsingController;
 use App\Http\Controllers\Api\Admin\TelegramBotController;
 use Illuminate\Support\Facades\Route;
 
+// Deploy endpoint (публичный, но защищен секретным ключом)
+// Доступен по адресу: /api/deploy
+Route::post('/deploy', [\App\Http\Controllers\DeployController::class, 'deploy']);
+
 // Публичные роуты
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);

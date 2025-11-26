@@ -133,16 +133,49 @@ echo "📦 Установка зависимостей Composer..."
 if command -v composer &> /dev/null; then
     composer install --no-dev --optimize-autoloader
 else
-    php composer.phar install --no-dev --optimize-autoloader
+    if [ -f "composer.phar" ]; then
+        $PHP_CMD composer.phar install --no-dev --optimize-autoloader
+    else
+        echo -e "${RED}❌ Composer не найден${NC}"
+        echo "Установите Composer или скачайте composer.phar"
+        exit 1
+    fi
 fi
 echo -e "${GREEN}✅ Зависимости установлены${NC}"
+
+# Определение команды PHP
+echo ""
+echo "🔍 Определение команды PHP..."
+if command -v php8.2 &> /dev/null; then
+    PHP_CMD="php8.2"
+    echo -e "${GREEN}✅ Найден php8.2${NC}"
+elif command -v php8.1 &> /dev/null; then
+    PHP_CMD="php8.1"
+    echo -e "${GREEN}✅ Найден php8.1${NC}"
+elif command -v php8.0 &> /dev/null; then
+    PHP_CMD="php8.0"
+    echo -e "${GREEN}✅ Найден php8.0${NC}"
+elif command -v php &> /dev/null; then
+    PHP_CMD="php"
+    echo -e "${GREEN}✅ Найден php${NC}"
+else
+    PHP_CMD="php8.2"
+    echo -e "${YELLOW}⚠️  PHP не найден в PATH, будет использоваться php8.2${NC}"
+fi
+
+# Добавление PHP_EXECUTABLE в .env если его нет
+if ! grep -q "PHP_EXECUTABLE=" .env 2>/dev/null; then
+    echo "" >> .env
+    echo "PHP_EXECUTABLE=$PHP_CMD" >> .env
+    echo -e "${GREEN}✅ PHP_EXECUTABLE добавлен в .env${NC}"
+fi
 
 # Генерация ключа приложения (если нужно)
 echo ""
 echo "🔑 Проверка APP_KEY..."
 if ! grep -q "APP_KEY=base64:" .env 2>/dev/null; then
     echo "Генерация APP_KEY..."
-    php artisan key:generate --force
+    $PHP_CMD artisan key:generate --force
     echo -e "${GREEN}✅ APP_KEY сгенерирован${NC}"
 else
     echo -e "${GREEN}✅ APP_KEY уже настроен${NC}"
@@ -151,17 +184,17 @@ fi
 # Очистка и кеширование
 echo ""
 echo "🧹 Очистка кеша..."
-php artisan config:clear
-php artisan cache:clear
-php artisan route:clear
-php artisan view:clear
+$PHP_CMD artisan config:clear
+$PHP_CMD artisan cache:clear
+$PHP_CMD artisan route:clear
+$PHP_CMD artisan view:clear
 echo -e "${GREEN}✅ Кеш очищен${NC}"
 
 echo ""
 echo "💾 Кеширование конфигурации..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+$PHP_CMD artisan config:cache
+$PHP_CMD artisan route:cache
+$PHP_CMD artisan view:cache
 echo -e "${GREEN}✅ Конфигурация закеширована${NC}"
 
 # Проверка прав доступа

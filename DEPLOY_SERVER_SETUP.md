@@ -55,17 +55,20 @@ nano .env
 vim .env
 ```
 
-2. Добавьте или обновите переменную `DEPLOY_SECRET`:
+2. Добавьте или обновите переменные:
 ```env
 DEPLOY_SECRET=your_very_secret_key_here_make_it_long_and_random
+PHP_EXECUTABLE=php8.2
 ```
 
-**Важно:** Используйте длинный случайный ключ для безопасности!
+**Важно:** 
+- Используйте длинный случайный ключ для `DEPLOY_SECRET`!
+- `PHP_EXECUTABLE` указывает путь к исполняемому файлу PHP (по умолчанию будет искать php8.2 автоматически)
 
 3. Сохраните файл и очистите кеш конфигурации:
 ```bash
-php artisan config:clear
-php artisan config:cache
+php8.2 artisan config:clear
+php8.2 artisan config:cache
 ```
 
 ## Шаг 4: Настройка прав доступа
@@ -141,6 +144,13 @@ curl -X POST https://essens-store.ru/api/deploy \
 
 Должен вернуться JSON ответ с `"success": true`.
 
+**Примечание:** Если на сервере используется `php8.2` вместо `php`, добавьте в `.env`:
+```env
+PHP_EXECUTABLE=php8.2
+```
+
+Контроллер автоматически определит правильную команду PHP, но можно явно указать через переменную окружения.
+
 ## Шаг 8: Настройка автоматического обновления (опционально)
 
 Можно настроить cron для периодической проверки обновлений:
@@ -151,6 +161,9 @@ crontab -e
 
 # Добавьте строку для проверки обновлений каждые 5 минут
 */5 * * * * cd /path/to/your/project && git fetch origin && git pull origin master >> /var/log/git-pull.log 2>&1
+
+# Или с выполнением команд после pull:
+*/5 * * * * cd /path/to/your/project && git fetch origin && git pull origin master && php8.2 artisan config:cache >> /var/log/git-pull.log 2>&1
 ```
 
 ## Шаг 9: Настройка веб-сервера (Nginx/Apache)
@@ -202,25 +215,27 @@ server {
 ```bash
 # Установка зависимостей
 composer install --no-dev --optimize-autoloader
+# Или если composer не в PATH:
+php8.2 composer.phar install --no-dev --optimize-autoloader
 
 # Копирование .env (если нужно)
 cp .env.example .env
 
 # Генерация ключа приложения
-php artisan key:generate
+php8.2 artisan key:generate
 
 # Запуск миграций
-php artisan migrate --force
+php8.2 artisan migrate --force
 
 # Очистка и кеширование
-php artisan config:clear
-php artisan cache:clear
-php artisan route:clear
-php artisan view:clear
+php8.2 artisan config:clear
+php8.2 artisan cache:clear
+php8.2 artisan route:clear
+php8.2 artisan view:clear
 
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+php8.2 artisan config:cache
+php8.2 artisan route:cache
+php8.2 artisan view:cache
 ```
 
 ## Проверка безопасности
@@ -247,6 +262,12 @@ grep DEPLOY_SECRET .env
 
 ```bash
 php artisan set-deploy --force --no-ssl-verify --secret=your_deploy_secret
+```
+
+**Важно:** На сервере контроллер автоматически определит правильную команду PHP (php8.2, php8.1, php8.0 или php). 
+Если нужно явно указать, добавьте в `.env` на сервере:
+```env
+PHP_EXECUTABLE=php8.2
 ```
 
 Если все настроено правильно, вы должны увидеть:

@@ -10,6 +10,69 @@ use Symfony\Component\Process\Process;
 class DeployController extends Controller
 {
     /**
+     * Получить путь к исполняемому файлу PHP
+     */
+    protected function getPhpExecutable(): string
+    {
+        // Проверяем переменную окружения
+        $phpPath = env('PHP_EXECUTABLE');
+        if ($phpPath) {
+            return $phpPath;
+        }
+
+        // Пробуем найти php8.2
+        $php82 = $this->findPhpExecutable('php8.2');
+        if ($php82) {
+            return $php82;
+        }
+
+        // Пробуем найти php8.1
+        $php81 = $this->findPhpExecutable('php8.1');
+        if ($php81) {
+            return $php81;
+        }
+
+        // Пробуем найти php8.0
+        $php80 = $this->findPhpExecutable('php8.0');
+        if ($php80) {
+            return $php80;
+        }
+
+        // По умолчанию используем php
+        return 'php';
+    }
+
+    /**
+     * Найти исполняемый файл PHP
+     */
+    protected function findPhpExecutable(string $name): ?string
+    {
+        $paths = [
+            '/usr/bin/' . $name,
+            '/usr/local/bin/' . $name,
+            '/opt/php/bin/' . $name,
+        ];
+
+        foreach ($paths as $path) {
+            if (file_exists($path) && is_executable($path)) {
+                return $path;
+            }
+        }
+
+        // Пробуем через which
+        $process = new Process(['which', $name]);
+        $process->run();
+        if ($process->isSuccessful()) {
+            $output = trim($process->getOutput());
+            if (!empty($output)) {
+                return $output;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Обработка запроса на развертывание
      */
     public function deploy(Request $request)
@@ -108,23 +171,39 @@ class DeployController extends Controller
             // Проверяем, были ли изменения
             $hasChanges = strpos($pullOutput, 'Already up to date') === false;
 
+            // Получаем путь к PHP
+            $phpExecutable = $this->getPhpExecutable();
+            Log::info('Using PHP executable', ['php' => $phpExecutable]);
+
             // Выполняем обновление зависимостей и кеша
             $commands = [];
             
             if ($hasChanges) {
                 // Обновляем зависимости composer
-                $composerProcess = new Process(['composer', 'install', '--no-dev', '--optimize-autoloader']);
+                // Используем правильный PHP для composer
+                $composerProcess = new Process([$phpExecutable, base_path('composer.phar'), 'install', '--no-dev', '--optimize-autoloader']);
                 $composerProcess->setWorkingDirectory(base_path());
                 $composerProcess->setTimeout(600);
+                
+                // Если composer.phar не найден, пробуем composer из PATH
+                if (!file_exists(base_path('composer.phar'))) {
+                    $composerProcess = new Process(['composer', 'install', '--no-dev', '--optimize-autoloader']);
+                    $composerProcess->setWorkingDirectory(base_path());
+                    $composerProcess->setTimeout(600);
+                }
+                
                 $composerProcess->run();
                 
                 if (!$composerProcess->isSuccessful()) {
                     Log::warning('Composer install failed', [
                         'error' => $composerProcess->getErrorOutput(),
+                        'output' => $composerProcess->getOutput(),
                     ]);
+                } else {
+                    Log::info('Composer install completed');
                 }
 
-                // Очищаем кеш
+                // Очищаем кеш через Artisan (использует текущий PHP)
                 Artisan::call('config:clear');
                 Artisan::call('cache:clear');
                 Artisan::call('route:clear');
@@ -138,6 +217,7 @@ class DeployController extends Controller
                 // Выполняем миграции
                 try {
                     Artisan::call('migrate', ['--force' => true]);
+                    Log::info('Migrations completed');
                 } catch (\Exception $e) {
                     Log::warning('Migration failed', [
                         'error' => $e->getMessage(),

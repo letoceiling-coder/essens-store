@@ -42,4 +42,19 @@ return Application::configure(basePath: dirname(__DIR__))
             // Для веб-запросов возвращаем null, чтобы Laravel использовал стандартную обработку
             return null;
         });
+        
+        // Для всех исключений в API маршрутах возвращаем JSON
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*') || $request->expectsJson() || $request->wantsJson()) {
+                $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage() ?: 'Internal Server Error',
+                    'error_type' => get_class($e),
+                ], $statusCode);
+            }
+            
+            return null;
+        });
     })->create();

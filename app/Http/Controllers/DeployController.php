@@ -77,16 +77,20 @@ class DeployController extends Controller
      */
     public function deploy(Request $request)
     {
-        // Проверка секретного ключа
-        $secret = $request->input('secret');
-        $expectedSecret = config('app.deploy_secret', env('DEPLOY_SECRET'));
+        // Убеждаемся, что всегда возвращаем JSON
+        $request->headers->set('Accept', 'application/json');
         
-        if ($expectedSecret && $secret !== $expectedSecret) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Неверный секретный ключ',
-            ], 403);
-        }
+        try {
+            // Проверка секретного ключа
+            $secret = $request->input('secret');
+            $expectedSecret = config('app.deploy_secret', env('DEPLOY_SECRET'));
+            
+            if ($expectedSecret && $secret !== $expectedSecret) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Неверный секретный ключ',
+                ], 403);
+            }
 
         $branch = $request->input('branch', 'master');
         $timestamp = $request->input('timestamp');
@@ -238,11 +242,29 @@ class DeployController extends Controller
             Log::error('Deploy failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка при развертывании: ' . $e->getMessage(),
+                'error_type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
+        } catch (\Throwable $e) {
+            Log::error('Deploy failed (Throwable)', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Критическая ошибка при развертывании: ' . $e->getMessage(),
+                'error_type' => get_class($e),
             ], 500);
         }
     }

@@ -91,74 +91,6 @@ class DeployController extends Controller
     }
 
     /**
-     * Собрать фронтенд (Vite)
-     */
-    protected function buildFrontend(string $projectPath): void
-    {
-        // Проверяем, есть ли package.json
-        $packageJsonPath = $projectPath . '/package.json';
-        if (!file_exists($packageJsonPath)) {
-            Log::info('package.json not found, skipping frontend build');
-            return;
-        }
-
-        // Проверяем, есть ли Node.js и npm
-        $nodeCheck = new Process(['which', 'node']);
-        $nodeCheck->run();
-        if (!$nodeCheck->isSuccessful()) {
-            Log::warning('Node.js not found, skipping frontend build');
-            return;
-        }
-
-        $npmCheck = new Process(['which', 'npm']);
-        $npmCheck->run();
-        if (!$npmCheck->isSuccessful()) {
-            Log::warning('npm not found, skipping frontend build');
-            return;
-        }
-
-        try {
-            // Устанавливаем зависимости (если нужно)
-            // Проверяем, существует ли node_modules
-            if (!is_dir($projectPath . '/node_modules')) {
-                Log::info('Installing npm dependencies...');
-                $npmInstallProcess = new Process(['npm', 'install', '--production']);
-                $npmInstallProcess->setWorkingDirectory($projectPath);
-                $npmInstallProcess->setTimeout(600);
-                $npmInstallProcess->run();
-                
-                if (!$npmInstallProcess->isSuccessful()) {
-                    Log::warning('npm install failed', [
-                        'error' => $npmInstallProcess->getErrorOutput(),
-                    ]);
-                } else {
-                    Log::info('npm install completed');
-                }
-            }
-
-            // Собираем фронтенд
-            Log::info('Building frontend assets...');
-            $buildProcess = new Process(['npm', 'run', 'build']);
-            $buildProcess->setWorkingDirectory($projectPath);
-            $buildProcess->setTimeout(600);
-            $buildProcess->run();
-            
-            if (!$buildProcess->isSuccessful()) {
-                Log::warning('Frontend build failed', [
-                    'error' => $buildProcess->getErrorOutput(),
-                    'output' => $buildProcess->getOutput(),
-                ]);
-            } else {
-                Log::info('Frontend build completed');
-            }
-        } catch (\Exception $e) {
-            Log::warning('Frontend build error', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
      * Найти исполняемый файл PHP
      */
     protected function findPhpExecutable(string $name): ?string
@@ -336,10 +268,6 @@ class DeployController extends Controller
                 Artisan::call('config:cache');
                 Artisan::call('route:cache');
                 Artisan::call('view:cache');
-
-                // Собираем фронтенд (Vite)
-                // Используем base_path() для Laravel проекта, а не gitRepoPath
-                $this->buildFrontend(base_path());
 
                 // Выполняем миграции
                 try {

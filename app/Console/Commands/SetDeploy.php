@@ -110,7 +110,48 @@ class SetDeploy extends Command
                 }
             }
 
-            // 2. Добавление файлов в Git
+            // 2. Сборка фронтенда (локально)
+            $this->newLine();
+            $this->info('🔨 Сборка фронтенда...');
+            
+            if (file_exists(base_path('package.json'))) {
+                // Проверяем, есть ли Node.js и npm
+                $nodeCheck = new SymfonyProcess(['node', '--version']);
+                $nodeCheck->run();
+                
+                if ($nodeCheck->isSuccessful()) {
+                    $npmCheck = new SymfonyProcess(['npm', '--version']);
+                    $npmCheck->run();
+                    
+                    if ($npmCheck->isSuccessful()) {
+                        try {
+                            // Собираем фронтенд
+                            $buildProcess = new SymfonyProcess(['npm', 'run', 'build']);
+                            $buildProcess->setWorkingDirectory(base_path());
+                            $buildProcess->setTimeout(600);
+                            $buildProcess->run();
+                            
+                            if ($buildProcess->isSuccessful()) {
+                                $this->info('✅ Фронтенд собран');
+                            } else {
+                                $this->warn('⚠️  Ошибка при сборке фронтенда: ' . $buildProcess->getErrorOutput());
+                                $this->warn('   Продолжаем без сборки фронтенда...');
+                            }
+                        } catch (\Exception $e) {
+                            $this->warn('⚠️  Ошибка при сборке фронтенда: ' . $e->getMessage());
+                            $this->warn('   Продолжаем без сборки фронтенда...');
+                        }
+                    } else {
+                        $this->warn('⚠️  npm не найден, пропускаем сборку фронтенда');
+                    }
+                } else {
+                    $this->warn('⚠️  Node.js не найден, пропускаем сборку фронтенда');
+                }
+            } else {
+                $this->info('ℹ️  package.json не найден, пропускаем сборку фронтенда');
+            }
+
+            // 3. Добавление файлов в Git
             if (!$this->option('skip-commit')) {
                 $this->newLine();
                 $this->info('📦 Добавление файлов в Git...');
@@ -125,7 +166,7 @@ class SetDeploy extends Command
                 
                 $this->info('✅ Файлы добавлены');
 
-                // 3. Создание коммита
+                // 4. Создание коммита
                 $this->newLine();
                 $this->info('💾 Создание коммита...');
                 
@@ -147,7 +188,7 @@ class SetDeploy extends Command
                 }
             }
 
-            // 4. Pull перед push (чтобы получить изменения с сервера)
+            // 5. Pull перед push (чтобы получить изменения с сервера)
             $pushBranch = $branch;
             
             if (!$this->option('skip-push') && !$this->option('skip-pull')) {
@@ -289,7 +330,7 @@ class SetDeploy extends Command
                 $pushBranch = ($currentBranch === $branch) ? $branch : $currentBranch;
             }
 
-            // 5. Push в Git
+            // 6. Push в Git
             if (!$this->option('skip-push')) {
                 $this->newLine();
                 
@@ -385,7 +426,7 @@ class SetDeploy extends Command
                 }
             }
 
-            // 6. Отправка запроса на сервер для обновления
+            // 7. Отправка запроса на сервер для обновления
             $this->newLine();
             $this->info("🌐 Отправка запроса на сервер: {$serverUrl}...");
             

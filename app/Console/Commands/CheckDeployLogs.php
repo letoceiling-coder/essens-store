@@ -16,7 +16,7 @@ class CheckDeployLogs extends Command
 
     public function handle()
     {
-        $serverUrl = $this->option('url') ?: 'http://avito.siteaccess.ru';
+        $serverUrl = $this->option('url') ?: 'https://essens-store.ru/';
         $lines = $this->option('lines') ?: 100;
         $token = $this->option('token') ?: env('DEPLOY_TOKEN');
 

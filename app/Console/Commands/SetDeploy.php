@@ -21,7 +21,7 @@ class SetDeploy extends Command
                             {--force : Принудительная отправка (опасно! перезапишет изменения на сервере)}
                             {--no-ssl-verify : Отключить проверку SSL сертификата (только для локальной разработки)}
                             {--branch=master : Ветка для push}
-                            {--server=http://avito.siteaccess.ru : URL сервера}
+                            {--server=https://essens-store.ru/ : URL сервера}
                             {--secret= : Секретный ключ для авторизации}';
 
     /**

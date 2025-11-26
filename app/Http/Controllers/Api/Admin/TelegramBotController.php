@@ -727,13 +727,22 @@ class TelegramBotController extends Controller
         // Преобразуем drop_pending_updates в boolean, если это строка
         $data = $request->all();
         if (isset($data['drop_pending_updates'])) {
-            $data['drop_pending_updates'] = filter_var(
-                $data['drop_pending_updates'],
-                FILTER_VALIDATE_BOOLEAN,
-                FILTER_NULL_ON_FAILURE
-            );
-            // Если преобразование не удалось, используем значение по умолчанию
-            if ($data['drop_pending_updates'] === null) {
+            $value = $data['drop_pending_updates'];
+            // Если это уже boolean, оставляем как есть
+            if (is_bool($value)) {
+                // Ничего не делаем
+            } 
+            // Если это строка "true" или "false", преобразуем
+            elseif (is_string($value)) {
+                $value = strtolower(trim($value));
+                $data['drop_pending_updates'] = in_array($value, ['true', '1', 'yes', 'on'], true);
+            }
+            // Если это число, преобразуем в boolean
+            elseif (is_numeric($value)) {
+                $data['drop_pending_updates'] = (bool) $value;
+            }
+            // Во всех остальных случаях - false
+            else {
                 $data['drop_pending_updates'] = false;
             }
         }

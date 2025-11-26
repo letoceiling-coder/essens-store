@@ -780,7 +780,8 @@ export default {
                 if (this.webhookForm.secret_token) {
                     formData.append('secret_token', this.webhookForm.secret_token);
                 }
-                formData.append('drop_pending_updates', this.webhookForm.drop_pending_updates);
+                // Отправляем boolean как строку "true" или "false" для правильной обработки на сервере
+                formData.append('drop_pending_updates', this.webhookForm.drop_pending_updates ? 'true' : 'false');
                 if (this.webhookForm.allowed_updates.length > 0) {
                     this.webhookForm.allowed_updates.forEach(update => {
                         formData.append('allowed_updates[]', update);
@@ -798,7 +799,7 @@ export default {
             if (!confirm('Удалить webhook?')) return;
             try {
                 await axios.delete(`/api/admin/telegram-bot/bots/${id}/webhook`, {
-                    params: { drop_pending_updates: this.webhookForm.drop_pending_updates },
+                    params: { drop_pending_updates: this.webhookForm.drop_pending_updates ? 'true' : 'false' },
                 });
                 alert('Webhook успешно удален');
             } catch (error) {

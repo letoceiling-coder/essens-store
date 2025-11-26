@@ -78,6 +78,19 @@ class DeployController extends Controller
     }
 
     /**
+     * Получить базовые аргументы Git с исправлением ownership
+     */
+    protected function getGitBaseArgs(string $gitRepoPath): array
+    {
+        // Используем опцию -c для установки safe.directory для каждой команды
+        // Это обходит проблему с dubious ownership
+        return [
+            'git',
+            '-c', 'safe.directory=' . $gitRepoPath
+        ];
+    }
+
+    /**
      * Найти исполняемый файл PHP
      */
     protected function findPhpExecutable(string $name): ?string
@@ -145,15 +158,18 @@ class DeployController extends Controller
                 ], 500);
             }
 
+            // Получаем базовые аргументы Git с исправлением ownership
+            $gitBaseArgs = $this->getGitBaseArgs($gitRepoPath);
+
             // Получаем текущую ветку
-            $currentBranchProcess = new Process(['git', 'branch', '--show-current']);
+            $currentBranchProcess = new Process(array_merge($gitBaseArgs, ['branch', '--show-current']));
             $currentBranchProcess->setWorkingDirectory($gitRepoPath);
             $currentBranchProcess->run();
             $currentBranch = trim($currentBranchProcess->getOutput()) ?: $branch;
 
             // Если указанная ветка отличается от текущей, переключаемся
             if ($currentBranch !== $branch) {
-                $checkoutProcess = new Process(['git', 'checkout', $branch]);
+                $checkoutProcess = new Process(array_merge($gitBaseArgs, ['checkout', $branch]));
                 $checkoutProcess->setWorkingDirectory($gitRepoPath);
                 $checkoutProcess->setTimeout(60);
                 $checkoutProcess->run();
@@ -172,7 +188,7 @@ class DeployController extends Controller
             }
 
             // Получаем последние изменения из git
-            $fetchProcess = new Process(['git', 'fetch', 'origin']);
+            $fetchProcess = new Process(array_merge($gitBaseArgs, ['fetch', 'origin']));
             $fetchProcess->setWorkingDirectory($gitRepoPath);
             $fetchProcess->setTimeout(60);
             $fetchProcess->run();
@@ -184,7 +200,7 @@ class DeployController extends Controller
             }
 
             // Делаем pull
-            $pullProcess = new Process(['git', 'pull', 'origin', $branch]);
+            $pullProcess = new Process(array_merge($gitBaseArgs, ['pull', 'origin', $branch]));
             $pullProcess->setWorkingDirectory($gitRepoPath);
             $pullProcess->setTimeout(300);
             $pullProcess->run();

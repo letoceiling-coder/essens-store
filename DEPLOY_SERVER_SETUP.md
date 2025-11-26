@@ -13,35 +13,54 @@ sudo yum install git -y
 
 ## Шаг 2: Настройка Git репозитория на сервере
 
-1. Перейдите в директорию проекта:
+**ВАЖНО:** Убедитесь, что вы находитесь в **корневой директории проекта Laravel**, а не в `public_html` или `public/`.
+
+1. Определите правильную директорию проекта:
 ```bash
-cd /path/to/your/project
+# Найдите файл artisan (он находится в корне Laravel проекта)
+find ~ -name "artisan" -type f 2>/dev/null | head -1
+
+# Перейдите в эту директорию
+cd $(dirname $(find ~ -name "artisan" -type f 2>/dev/null | head -1))
+
+# Или вручную (обычно это родительская директория от public_html):
+cd ~/essens
+# или
+cd ..
 ```
 
-2. Проверьте, есть ли уже Git репозиторий:
+2. Проверьте, что вы в правильной директории:
+```bash
+ls -la
+# Должны увидеть: app/, config/, routes/, composer.json, artisan
+```
+
+3. Проверьте, есть ли уже Git репозиторий:
 ```bash
 git status
 ```
 
-3. Если репозитория нет, инициализируйте его:
+4. Если репозитория нет, инициализируйте его:
 ```bash
 git init
 git remote add origin https://github.com/letoceiling-coder/essens-store.git
 ```
 
-4. Если репозиторий уже есть, проверьте remote:
+5. Если репозиторий уже есть, проверьте remote:
 ```bash
 git remote -v
 ```
 
-5. Если remote неправильный, обновите его:
+6. Если remote неправильный, обновите его:
 ```bash
 git remote set-url origin https://github.com/letoceiling-coder/essens-store.git
 ```
 
-6. Получите код из репозитория:
+7. Получите код из репозитория:
 ```bash
 git fetch origin
+git checkout -b master origin/master
+# или если ветка уже существует:
 git checkout master
 git pull origin master
 ```

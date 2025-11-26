@@ -91,6 +91,74 @@ class DeployController extends Controller
     }
 
     /**
+     * Синхронизировать public/build из Git репозитория в рабочую директорию
+     */
+    protected function syncPublicBuild(string $gitRepoPath, string $workingPath): void
+    {
+        $sourceBuildPath = $gitRepoPath . '/public/build';
+        $targetBuildPath = $workingPath . '/public/build';
+
+        // Если пути одинаковые, ничего не делаем
+        if (realpath($sourceBuildPath) === realpath($targetBuildPath)) {
+            return;
+        }
+
+        // Проверяем, существует ли исходная директория
+        if (!is_dir($sourceBuildPath)) {
+            Log::warning('Source public/build directory not found', [
+                'path' => $sourceBuildPath,
+            ]);
+            return;
+        }
+
+        try {
+            // Создаем целевую директорию, если её нет
+            if (!is_dir($targetBuildPath)) {
+                mkdir($targetBuildPath, 0755, true);
+            }
+
+            // Копируем файлы
+            $this->copyDirectory($sourceBuildPath, $targetBuildPath);
+            
+            Log::info('public/build synchronized', [
+                'from' => $sourceBuildPath,
+                'to' => $targetBuildPath,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to sync public/build', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Рекурсивно копировать директорию
+     */
+    protected function copyDirectory(string $source, string $destination): void
+    {
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $targetPath = $destination . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+            
+            if ($item->isDir()) {
+                if (!is_dir($targetPath)) {
+                    mkdir($targetPath, 0755, true);
+                }
+            } else {
+                copy($item->getPathname(), $targetPath);
+            }
+        }
+    }
+
+    /**
      * Найти исполняемый файл PHP
      */
     protected function findPhpExecutable(string $name): ?string
@@ -268,6 +336,9 @@ class DeployController extends Controller
                 Artisan::call('config:cache');
                 Artisan::call('route:cache');
                 Artisan::call('view:cache');
+
+                // Синхронизируем public/build из Git репозитория в рабочую директорию
+                $this->syncPublicBuild($gitRepoPath, base_path());
 
                 // Выполняем миграции
                 try {

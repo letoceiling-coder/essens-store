@@ -92,16 +92,14 @@ class DeployController extends Controller
                 ], 403);
             }
 
-        $branch = $request->input('branch', 'master');
-        $timestamp = $request->input('timestamp');
+            $branch = $request->input('branch', 'master');
+            $timestamp = $request->input('timestamp');
 
-        Log::info('Deploy request received', [
-            'branch' => $branch,
-            'timestamp' => $timestamp,
-            'ip' => $request->ip(),
-        ]);
-
-        try {
+            Log::info('Deploy request received', [
+                'branch' => $branch,
+                'timestamp' => $timestamp,
+                'ip' => $request->ip(),
+            ]);
             // Проверяем, что мы в git репозитории
             if (!is_dir(base_path('.git'))) {
                 return response()->json([

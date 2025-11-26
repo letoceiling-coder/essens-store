@@ -448,6 +448,15 @@ class SetDeploy extends Command
                 }
                 
                 if (!$response) {
+                    // Проверяем, была ли ошибка SSL
+                    if ($lastError instanceof \Illuminate\Http\Client\ConnectionException) {
+                        $errorMessage = $lastError->getMessage();
+                        if (strpos($errorMessage, 'SSL') !== false || 
+                            strpos($errorMessage, 'certificate') !== false ||
+                            strpos($errorMessage, 'cURL error 60') !== false) {
+                            throw new \Exception('SSL_ERROR: ' . $errorMessage);
+                        }
+                    }
                     throw new \Exception('Не удалось подключиться ни к одному endpoint. Убедитесь, что на сервере обновлен код.');
                 }
                 
@@ -548,32 +557,51 @@ class SetDeploy extends Command
                     return Command::FAILURE;
                 }
             } catch (\Illuminate\Http\Client\ConnectionException $e) {
-                $this->error('❌ Ошибка подключения к серверу: ' . $e->getMessage());
-                $this->warn('');
-                $this->warn('Возможные причины:');
-                $this->line('1. Сервер недоступен');
-                $this->line('2. Неправильный URL сервера');
-                $this->line('3. Проблемы с сетью или файрволом');
-                $this->line('4. Проблемы с SSL сертификатом');
-                $this->newLine();
-                $this->info('💡 Попробуйте использовать опцию --no-ssl-verify для отключения проверки SSL:');
-                $this->line("   php artisan set-deploy --no-ssl-verify");
-                return Command::FAILURE;
-            } catch (\Exception $e) {
                 $errorMessage = $e->getMessage();
                 
+                // Проверяем, является ли это ошибкой SSL
                 if (strpos($errorMessage, 'SSL') !== false || 
                     strpos($errorMessage, 'certificate') !== false ||
                     strpos($errorMessage, 'cURL error 60') !== false) {
                     $this->error('❌ Ошибка SSL сертификата: ' . $errorMessage);
                     $this->warn('');
-                    $this->warn('Это типичная проблема на Windows при работе с самоподписанными сертификатами.');
+                    $this->warn('Это типичная проблема на Windows при работе с SSL сертификатами.');
                     $this->newLine();
                     $this->info('💡 Решение: Используйте опцию --no-ssl-verify:');
-                    $this->line("   php artisan set-deploy --no-ssl-verify");
+                    $this->line("   php artisan set-deploy --force --no-ssl-verify");
                     $this->newLine();
                     $this->warn('⚠️  ВНИМАНИЕ: Отключение проверки SSL снижает безопасность!');
-                    $this->warn('   Используйте только для локальной разработки.');
+                    $this->warn('   Используйте только для локальной разработки или если вы доверяете серверу.');
+                } else {
+                    $this->error('❌ Ошибка подключения к серверу: ' . $errorMessage);
+                    $this->warn('');
+                    $this->warn('Возможные причины:');
+                    $this->line('1. Сервер недоступен');
+                    $this->line('2. Неправильный URL сервера');
+                    $this->line('3. Проблемы с сетью или файрволом');
+                    $this->line('4. Проблемы с SSL сертификатом');
+                    $this->newLine();
+                    $this->info('💡 Попробуйте использовать опцию --no-ssl-verify для отключения проверки SSL:');
+                    $this->line("   php artisan set-deploy --no-ssl-verify");
+                }
+                return Command::FAILURE;
+            } catch (\Exception $e) {
+                $errorMessage = $e->getMessage();
+                
+                // Проверяем, является ли это ошибкой SSL
+                if (strpos($errorMessage, 'SSL_ERROR') !== false || 
+                    strpos($errorMessage, 'SSL') !== false || 
+                    strpos($errorMessage, 'certificate') !== false ||
+                    strpos($errorMessage, 'cURL error 60') !== false) {
+                    $this->error('❌ Ошибка SSL сертификата');
+                    $this->warn('');
+                    $this->warn('Это типичная проблема на Windows при работе с SSL сертификатами.');
+                    $this->newLine();
+                    $this->info('💡 Решение: Используйте опцию --no-ssl-verify:');
+                    $this->line("   php artisan set-deploy --force --no-ssl-verify");
+                    $this->newLine();
+                    $this->warn('⚠️  ВНИМАНИЕ: Отключение проверки SSL снижает безопасность!');
+                    $this->warn('   Используйте только для локальной разработки или если вы доверяете серверу.');
                 } else {
                     $this->error('❌ Ошибка при отправке запроса на сервер: ' . $errorMessage);
                     $this->warn('');
@@ -582,6 +610,9 @@ class SetDeploy extends Command
                     $this->line('2. Неправильный URL сервера');
                     $this->line('3. Проблемы с сетью');
                     $this->line('4. Неправильный секретный ключ');
+                    $this->newLine();
+                    $this->info('💡 Если это ошибка SSL, попробуйте:');
+                    $this->line("   php artisan set-deploy --force --no-ssl-verify");
                 }
                 return Command::FAILURE;
             }

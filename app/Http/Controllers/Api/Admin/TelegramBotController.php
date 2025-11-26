@@ -730,7 +730,7 @@ class TelegramBotController extends Controller
             $value = $data['drop_pending_updates'];
             // Если это уже boolean, оставляем как есть
             if (is_bool($value)) {
-                // Ничего не делаем
+                $data['drop_pending_updates'] = $value;
             } 
             // Если это строка "true" или "false", преобразуем
             elseif (is_string($value)) {

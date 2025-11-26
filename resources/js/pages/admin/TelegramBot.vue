@@ -771,24 +771,25 @@ export default {
             // Обновляем URL перед отправкой
             this.updateWebhookUrl();
             try {
-                const formData = new FormData();
-                formData.append('url', this.webhookForm.url);
-                formData.append('max_connections', this.webhookForm.max_connections);
+                // Используем JSON вместо FormData для правильной передачи boolean значений
+                const payload = {
+                    url: this.webhookForm.url,
+                    max_connections: this.webhookForm.max_connections,
+                    drop_pending_updates: this.webhookForm.drop_pending_updates,
+                };
+                
                 if (this.webhookForm.ip_address) {
-                    formData.append('ip_address', this.webhookForm.ip_address);
+                    payload.ip_address = this.webhookForm.ip_address;
                 }
                 if (this.webhookForm.secret_token) {
-                    formData.append('secret_token', this.webhookForm.secret_token);
+                    payload.secret_token = this.webhookForm.secret_token;
                 }
-                // Отправляем boolean как строку "true" или "false" для правильной обработки на сервере
-                formData.append('drop_pending_updates', this.webhookForm.drop_pending_updates ? 'true' : 'false');
                 if (this.webhookForm.allowed_updates.length > 0) {
-                    this.webhookForm.allowed_updates.forEach(update => {
-                        formData.append('allowed_updates[]', update);
-                    });
+                    payload.allowed_updates = this.webhookForm.allowed_updates;
                 }
-                await axios.post(`/api/admin/telegram-bot/bots/${id}/webhook`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
+                
+                await axios.post(`/api/admin/telegram-bot/bots/${id}/webhook`, payload, {
+                    headers: { 'Content-Type': 'application/json' },
                 });
                 alert('Webhook успешно установлен');
             } catch (error) {

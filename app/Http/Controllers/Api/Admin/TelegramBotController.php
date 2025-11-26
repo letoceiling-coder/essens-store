@@ -724,7 +724,21 @@ class TelegramBotController extends Controller
     {
         $bot = TelegraphBot::findOrFail($id);
 
-        $validator = Validator::make($request->all(), [
+        // Преобразуем drop_pending_updates в boolean, если это строка
+        $data = $request->all();
+        if (isset($data['drop_pending_updates'])) {
+            $data['drop_pending_updates'] = filter_var(
+                $data['drop_pending_updates'],
+                FILTER_VALIDATE_BOOLEAN,
+                FILTER_NULL_ON_FAILURE
+            );
+            // Если преобразование не удалось, используем значение по умолчанию
+            if ($data['drop_pending_updates'] === null) {
+                $data['drop_pending_updates'] = false;
+            }
+        }
+
+        $validator = Validator::make($data, [
             'url' => 'required|url',
             'certificate' => 'sometimes|file|mimes:pem',
             'ip_address' => 'sometimes|ip',
@@ -743,20 +757,20 @@ class TelegramBotController extends Controller
 
         try {
             $certificatePath = null;
-            if ($request->hasFile('certificate')) {
+            if (isset($data['certificate']) && $request->hasFile('certificate')) {
                 $certificatePath = $request->file('certificate')->getRealPath();
             }
 
             $response = $this->telegraph
                 ->bot($bot)
                 ->setWebhook(
-                    url: $request->url,
+                    url: $data['url'],
                     certificate: $certificatePath,
-                    ipAddress: $request->input('ip_address'),
-                    maxConnections: $request->input('max_connections'),
-                    allowedUpdates: $request->input('allowed_updates'),
-                    dropPendingUpdates: $request->input('drop_pending_updates', false),
-                    secretToken: $request->input('secret_token')
+                    ipAddress: $data['ip_address'] ?? null,
+                    maxConnections: $data['max_connections'] ?? null,
+                    allowedUpdates: $data['allowed_updates'] ?? null,
+                    dropPendingUpdates: $data['drop_pending_updates'] ?? false,
+                    secretToken: $data['secret_token'] ?? null
                 )
                 ->send();
 
@@ -786,11 +800,24 @@ class TelegramBotController extends Controller
     {
         $bot = TelegraphBot::findOrFail($id);
 
+        // Преобразуем drop_pending_updates в boolean, если это строка
+        $dropPendingUpdates = $request->input('drop_pending_updates', false);
+        if (is_string($dropPendingUpdates)) {
+            $dropPendingUpdates = filter_var(
+                $dropPendingUpdates,
+                FILTER_VALIDATE_BOOLEAN,
+                FILTER_NULL_ON_FAILURE
+            );
+            if ($dropPendingUpdates === null) {
+                $dropPendingUpdates = false;
+            }
+        }
+
         try {
             $response = $this->telegraph
                 ->bot($bot)
                 ->deleteWebhook(
-                    dropPendingUpdates: $request->input('drop_pending_updates', false)
+                    dropPendingUpdates: $dropPendingUpdates
                 )
                 ->send();
 

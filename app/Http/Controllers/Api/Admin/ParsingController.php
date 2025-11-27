@@ -455,9 +455,11 @@ class ParsingController extends Controller
                     
                     $product = null;
                     if ($existingProduct) {
-                        // Обновляем существующий товар
-                        $existingProduct->update([
+                        // Обновляем существующий товар - обновляем ВСЕ данные
+                        $updateData = [
+                            'subcategory_id' => $finalSubcategoryId, // Обновляем категорию/подкатегорию
                             'name' => $productData['name'],
+                            'sku' => $sku, // Обновляем SKU на случай, если он изменился
                             'description' => $productData['description'],
                             'price' => $mainPrice,
                             'old_price' => $productData['old_price'] ?? null,
@@ -465,14 +467,21 @@ class ParsingController extends Controller
                             'recommended_price' => $productData['recommended_price'] ?? null,
                             'in_stock' => $productData['in_stock'] ?? true,
                             'volume' => $productData['volume'] ?? null,
-                        ]);
+                            'type' => $productData['type'] ?? $existingProduct->type, // Сохраняем существующий, если не парсится
+                            'gender_target' => $productData['gender_target'] ?? $existingProduct->gender_target, // Сохраняем существующий, если не парсится
+                            'tags' => $productData['tags'] ?? $existingProduct->tags, // Сохраняем существующие, если не парсятся
+                        ];
+                        
+                        $existingProduct->update($updateData);
                         $product = $existingProduct;
                         $saved++;
                         
-                        \Log::info("Existing product updated", [
+                        \Log::info("Existing product updated with all data", [
                             'product_id' => $product->id,
                             'sku' => $sku,
+                            'subcategory_id' => $finalSubcategoryId,
                             'has_images_in_data' => !empty($productData['images']),
+                            'updated_fields' => array_keys($updateData),
                         ]);
                     } else {
                         // Создаем новый товар
@@ -485,6 +494,8 @@ class ParsingController extends Controller
                             'subcategory_id' => $finalSubcategoryId,
                             'name' => $productData['name'],
                             'sku' => $sku,
+                            'type' => $productData['type'] ?? null,
+                            'gender_target' => $productData['gender_target'] ?? null,
                             'description' => $productData['description'],
                             'price' => $mainPrice,
                             'old_price' => $productData['old_price'] ?? null,
@@ -493,8 +504,15 @@ class ParsingController extends Controller
                             'currency' => 'RUB',
                             'in_stock' => $productData['in_stock'] ?? true,
                             'volume' => $productData['volume'] ?? null,
+                            'tags' => $productData['tags'] ?? null,
                         ]);
                         $saved++;
+                        
+                        \Log::info("New product created", [
+                            'product_id' => $product->id,
+                            'sku' => $sku,
+                            'subcategory_id' => $finalSubcategoryId,
+                        ]);
                     }
 
                     // Сохраняем изображения товара
@@ -510,6 +528,9 @@ class ParsingController extends Controller
                                 'product_id' => $product->id,
                                 'images_count' => count($productData['images']),
                             ]);
+                            
+                            // Если товар существующий, собираем новые URL изображений для сравнения
+                            $newImageUrls = [];
                             
                             foreach ($productData['images'] as $index => $imageUrl) {
                                 try {
@@ -555,6 +576,10 @@ class ParsingController extends Controller
                                         ]
                                     );
                                     
+                                    $newImageUrls[] = $finalImageUrl;
+                                    
+                                    $newImageUrls[] = $finalImageUrl;
+                                    
                                     \Log::info("ProductImage saved", [
                                         'product_image_id' => $productImage->id,
                                         'product_id' => $product->id,
@@ -567,6 +592,20 @@ class ParsingController extends Controller
                                         'image_url' => $imageUrl,
                                         'error' => $e->getMessage(),
                                         'trace' => $e->getTraceAsString(),
+                                    ]);
+                                }
+                            }
+                            
+                            // Если товар существующий, удаляем изображения, которых больше нет в новых данных
+                            if ($existingProduct && !empty($newImageUrls)) {
+                                $deletedCount = \App\Models\ProductImage::where('product_id', $product->id)
+                                    ->whereNotIn('url', $newImageUrls)
+                                    ->delete();
+                                
+                                if ($deletedCount > 0) {
+                                    \Log::info("Deleted old product images", [
+                                        'product_id' => $product->id,
+                                        'deleted_count' => $deletedCount,
                                     ]);
                                 }
                             }

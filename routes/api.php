@@ -136,6 +136,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('bots/{id}/webhook', [TelegramBotController::class, 'setWebhook']);
             Route::delete('bots/{id}/webhook', [TelegramBotController::class, 'deleteWebhook']);
             Route::get('bots/{id}/webhook', [TelegramBotController::class, 'getWebhookInfo']);
+            Route::post('bots/{id}/webhook/test', [TelegramBotController::class, 'testWebhook']);
         });
     });
 });

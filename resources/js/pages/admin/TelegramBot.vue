@@ -464,6 +464,12 @@
                                 >
                                     Получить информацию
                                 </button>
+                                <button
+                                    @click="testWebhook(bot.id)"
+                                    class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                                >
+                                    Проверить Webhook
+                                </button>
                             </div>
                             <div v-if="webhookInfo" class="mt-4 p-4 bg-muted/30 rounded-lg">
                                 <h4 class="font-semibold mb-2">Информация о Webhook:</h4>
@@ -935,6 +941,41 @@ export default {
                 this.webhookInfo = response.data.data;
             } catch (error) {
                 this.error = error.response?.data?.message || 'Ошибка при получении информации о webhook';
+            }
+        },
+        async testWebhook(id) {
+            try {
+                const response = await axios.post(`/api/admin/telegram-bot/bots/${id}/webhook/test`);
+                const data = response.data.data;
+                
+                let message = 'Проверка webhook:\n\n';
+                message += `URL: ${data.webhook_url || 'не установлен'}\n`;
+                message += `Ожидающих обновлений: ${data.pending_update_count || 0}\n`;
+                
+                if (data.last_error_message) {
+                    message += `\n⚠️ Последняя ошибка: ${data.last_error_message}\n`;
+                    message += `Дата ошибки: ${data.last_error_date ? new Date(data.last_error_date * 1000).toLocaleString() : 'неизвестно'}\n`;
+                }
+                
+                if (data.has_recent_activity) {
+                    message += `\n✅ Обнаружена активность: ${data.recent_updates} недавних обновлений\n`;
+                }
+                
+                message += `\n${data.instruction || ''}`;
+                
+                alert(message);
+                
+                // Обновляем информацию о webhook
+                await this.getWebhookInfo(id);
+            } catch (error) {
+                const errorMessage = error.response?.data?.message || 'Ошибка при проверке webhook';
+                const errorData = error.response?.data?.data;
+                
+                if (errorData && errorData.instruction) {
+                    alert(`${errorMessage}\n\n${errorData.instruction}`);
+                } else {
+                    alert(errorMessage);
+                }
             }
         },
         getUpdateTypeDescription(type) {

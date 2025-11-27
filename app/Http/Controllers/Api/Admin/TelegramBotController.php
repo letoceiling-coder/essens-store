@@ -880,5 +880,84 @@ class TelegramBotController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Проверить webhook (получить последние обновления)
+     */
+    public function testWebhook($id)
+    {
+        $bot = TelegraphBot::findOrFail($id);
+
+        try {
+            // Получаем информацию о webhook
+            $webhookResponse = $this->telegraph
+                ->bot($bot)
+                ->getWebhookInfo()
+                ->send();
+
+            if (!$webhookResponse->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Не удалось получить информацию о webhook',
+                    'error' => $webhookResponse->json('description', 'Неизвестная ошибка'),
+                ], 400);
+            }
+
+            $webhookInfo = $webhookResponse->json('result');
+            
+            // Проверяем, установлен ли webhook
+            if (empty($webhookInfo['url'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Webhook не установлен',
+                    'data' => [
+                        'webhook_info' => $webhookInfo,
+                        'instruction' => 'Сначала установите webhook, используя кнопку "Установить Webhook"',
+                    ],
+                ], 400);
+            }
+
+            // Получаем последние обновления для проверки работы webhook
+            $updatesResponse = $this->telegraph
+                ->bot($bot)
+                ->getUpdates(limit: 1)
+                ->send();
+
+            $result = [
+                'webhook_info' => $webhookInfo,
+                'webhook_url' => $webhookInfo['url'] ?? null,
+                'webhook_configured' => !empty($webhookInfo['url']),
+                'pending_update_count' => $webhookInfo['pending_update_count'] ?? 0,
+                'last_error_date' => $webhookInfo['last_error_date'] ?? null,
+                'last_error_message' => $webhookInfo['last_error_message'] ?? null,
+                'max_connections' => $webhookInfo['max_connections'] ?? null,
+            ];
+
+            if ($updatesResponse->successful()) {
+                $updates = $updatesResponse->json('result', []);
+                $result['recent_updates'] = count($updates);
+                $result['has_recent_activity'] = count($updates) > 0;
+                
+                if (count($updates) > 0) {
+                    $result['last_update'] = $updates[0];
+                }
+            }
+
+            // Инструкция для тестирования
+            $result['instruction'] = 'Отправьте команду /test_server боту в Telegram для проверки работы webhook. Если бот ответит "✅ Связь настроена", значит webhook работает корректно.';
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Информация о webhook получена',
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => $e->getTraceAsString(),
+            ], 500);
+        }
+    }
 }
 

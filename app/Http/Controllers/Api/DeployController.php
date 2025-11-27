@@ -117,23 +117,20 @@ class DeployController extends Controller
                 $envString .= $key . '=' . escapeshellarg($value) . ' ';
             }
             
-            // Пробуем несколько способов обхода проблемы с правами доступа
-            // Способ 1: Используем переменную окружения GIT_SAFE_DIRECTORY (самый надежный)
+            // Используем переменную окружения GIT_SAFE_DIRECTORY для обхода проблемы с правами
+            // Это работает без необходимости изменения git config
+            $gitEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' GIT_CONFIG_NOSYSTEM=1 ';
+            
+            // Проверка, что это git репозиторий
             $output = [];
-            exec($envString . 'cd ' . $projectPath . ' && git rev-parse --git-dir 2>&1', $output, $status);
+            exec($gitEnv . 'cd ' . $projectPath . ' && git rev-parse --git-dir 2>&1', $output, $status);
             
-            // Способ 2: Если не работает, пробуем с флагом -c safe.directory
-            if ($status !== 0) {
-                $output = [];
-                exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' rev-parse --git-dir 2>&1', $output, $status);
-            }
-            
-            // Способ 3: Пытаемся добавить в локальный config (если есть права на запись)
+            // Если не работает, пробуем добавить в локальный config
             if ($status !== 0) {
                 $outputStr = implode(' ', $output);
                 if (strpos($outputStr, 'dubious ownership') !== false) {
-                    // Пытаемся добавить в локальный config
-                    exec($envString . 'cd ' . $projectPath . ' && git config --local safe.directory ' . $gitSafePath . ' 2>&1', $localOutput, $localStatus);
+                    // Пытаемся добавить в локальный config (не требует прав суперпользователя)
+                    exec($gitEnv . 'cd ' . $projectPath . ' && git config --local safe.directory ' . $gitSafePath . ' 2>&1', $localOutput, $localStatus);
                     if ($localStatus === 0) {
                         Log::info('Deploy: Added directory to local git config', [
                             'path' => $projectPath, 
@@ -141,7 +138,7 @@ class DeployController extends Controller
                         ]);
                         // Повторяем проверку
                         $output = [];
-                        exec($envString . 'cd ' . $projectPath . ' && git rev-parse --git-dir 2>&1', $output, $status);
+                        exec($gitEnv . 'cd ' . $projectPath . ' && git rev-parse --git-dir 2>&1', $output, $status);
                     } else {
                         Log::warning('Deploy: Could not add to local git config', [
                             'path' => $projectPath, 
@@ -150,14 +147,6 @@ class DeployController extends Controller
                         ]);
                     }
                 }
-            }
-            
-            // Способ 4: Если все еще не работает, пробуем использовать только переменную окружения
-            if ($status !== 0) {
-                // Используем только GIT_SAFE_DIRECTORY без других настроек
-                $simpleEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' ';
-                $output = [];
-                exec($simpleEnv . 'cd ' . $projectPath . ' && git rev-parse --git-dir 2>&1', $output, $status);
             }
             
             if ($status !== 0) {

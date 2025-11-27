@@ -21,19 +21,27 @@ class DeployController extends Controller
                 ?? $request->header('deploy-secret')
                 ?? $request->header('DEPLOY-SECRET');
 
+            // Убираем пробелы и переносы строк (на случай, если они попали в .env)
+            $secret = trim($secret);
+            $clientSecret = trim($clientSecret ?? '');
+
             // Логируем для отладки (без полного секрета)
             Log::info('Deploy: Secret check', [
                 'server_secret_set' => !empty($secret),
                 'server_secret_length' => $secret ? strlen($secret) : 0,
+                'server_secret_preview' => $secret ? substr($secret, 0, 4) . '...' : 'empty',
                 'client_secret_provided' => !empty($clientSecret),
                 'client_secret_length' => $clientSecret ? strlen($clientSecret) : 0,
+                'client_secret_preview' => $clientSecret ? substr($clientSecret, 0, 4) . '...' : 'empty',
                 'secrets_match' => $secret === $clientSecret,
+                'secrets_identical' => $secret === $clientSecret,
             ]);
 
             if (empty($secret)) {
                 Log::error('Deploy: DEPLOY_SECRET not set on server');
                 return response()->json([
-                    'error' => 'DEPLOY_SECRET not configured on server'
+                    'error' => 'DEPLOY_SECRET not configured on server',
+                    'hint' => 'Добавьте DEPLOY_SECRET в .env файл на сервере и выполните: php artisan config:clear'
                 ], 500);
             }
 
@@ -42,10 +50,18 @@ class DeployController extends Controller
                     'client_secret_provided' => $clientSecret ? 'yes' : 'no',
                     'client_secret_length' => $clientSecret ? strlen($clientSecret) : 0,
                     'server_secret_length' => strlen($secret),
+                    'server_secret_preview' => substr($secret, 0, 4) . '...',
+                    'client_secret_preview' => $clientSecret ? substr($clientSecret, 0, 4) . '...' : 'empty',
                 ]);
                 return response()->json([
                     'error' => 'Invalid secret',
-                    'hint' => 'Проверьте, что DEPLOY_SECRET в .env на сервере совпадает с DEPLOY_SECRET в .env на локальной машине'
+                    'hint' => 'Проверьте, что DEPLOY_SECRET в .env на сервере совпадает с DEPLOY_SECRET в .env на локальной машине. После изменения .env выполните: php artisan config:clear',
+                    'debug' => [
+                        'server_secret_length' => strlen($secret),
+                        'client_secret_length' => $clientSecret ? strlen($clientSecret) : 0,
+                        'server_secret_preview' => substr($secret, 0, 4) . '...',
+                        'client_secret_preview' => $clientSecret ? substr($clientSecret, 0, 4) . '...' : 'empty',
+                    ]
                 ], 403);
             }
 

@@ -69,18 +69,73 @@ class DeployController extends Controller
             $output = [];
             $status = 0;
 
-            // Проверка версии composer и npm (пропускаем установку, так как это может требовать sudo)
-            $composerVersion = exec('composer --version 2>&1', $output, $status);
-            $allOutput['composer_check'] = ['version' => $composerVersion, 'status' => $status, 'output' => $output];
-            if ($status !== 0 || !$composerVersion) {
-                Log::warning('Deploy: Composer not found or error', ['output' => $output]);
+            // Проверка версии composer и npm
+            // Пробуем найти composer в разных местах
+            $composerPaths = [
+                'composer',  // В PATH
+                '~/bin/composer',  // В домашней директории
+                '/home/d/dsc23ytp/bin/composer',  // Полный путь
+            ];
+            
+            $composerCmd = null;
+            foreach ($composerPaths as $path) {
+                $expandedPath = str_replace('~', $_SERVER['HOME'] ?? '/home/d/dsc23ytp', $path);
+                $output = [];
+                exec($expandedPath . ' --version 2>&1', $output, $status);
+                if ($status === 0 && !empty($output)) {
+                    $composerCmd = $expandedPath;
+                    $allOutput['composer_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'path' => $expandedPath];
+                    Log::info('Deploy: Composer found', ['path' => $expandedPath, 'version' => $output[0] ?? null]);
+                    break;
+                }
+            }
+            
+            if (!$composerCmd) {
+                Log::warning('Deploy: Composer not found', ['checked_paths' => $composerPaths]);
+                $allOutput['composer_check'] = ['status' => 'not_found', 'output' => ['Composer not found in any checked path']];
             }
 
-            $output = [];
-            $npmVersion = exec('npm --version 2>&1', $output, $status);
-            $allOutput['npm_check'] = ['version' => $npmVersion, 'status' => $status, 'output' => $output];
-            if ($status !== 0 || !$npmVersion) {
-                Log::warning('Deploy: NPM not found or error', ['output' => $output]);
+            // Пробуем найти npm в разных местах
+            $npmPaths = [
+                'npm',  // В PATH
+                '~/nodejs/bin/npm',  // Прямая установка
+                '/home/d/dsc23ytp/nodejs/bin/npm',  // Полный путь
+            ];
+            
+            // Также пробуем через NVM
+            $nvmDir = $_SERVER['HOME'] ?? '/home/d/dsc23ytp';
+            $nvmPath = $nvmDir . '/.nvm/nvm.sh';
+            
+            $npmCmd = null;
+            // Сначала пробуем через NVM
+            if (file_exists($nvmPath)) {
+                $output = [];
+                exec('bash -c "source ' . escapeshellarg($nvmPath) . ' && npm --version" 2>&1', $output, $status);
+                if ($status === 0 && !empty($output)) {
+                    $npmCmd = 'bash -c "source ' . escapeshellarg($nvmPath) . ' && npm"';
+                    $allOutput['npm_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'method' => 'nvm'];
+                    Log::info('Deploy: NPM found via NVM', ['version' => $output[0] ?? null]);
+                }
+            }
+            
+            // Если NVM не сработал, пробуем прямые пути
+            if (!$npmCmd) {
+                foreach ($npmPaths as $path) {
+                    $expandedPath = str_replace('~', $_SERVER['HOME'] ?? '/home/d/dsc23ytp', $path);
+                    $output = [];
+                    exec($expandedPath . ' --version 2>&1', $output, $status);
+                    if ($status === 0 && !empty($output)) {
+                        $npmCmd = $expandedPath;
+                        $allOutput['npm_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'path' => $expandedPath];
+                        Log::info('Deploy: NPM found', ['path' => $expandedPath, 'version' => $output[0] ?? null]);
+                        break;
+                    }
+                }
+            }
+            
+            if (!$npmCmd) {
+                Log::warning('Deploy: NPM not found', ['checked_paths' => $npmPaths]);
+                $allOutput['npm_check'] = ['status' => 'not_found', 'output' => ['NPM not found in any checked path']];
             }
 
             // Проверка наличия git репозитория
@@ -253,38 +308,51 @@ class DeployController extends Controller
             }
 
             // Установка зависимостей и сборка проекта
-            // Проверяем наличие composer перед выполнением
-            $composerCheck = exec('command -v composer 2>&1', $composerOutput, $composerStatus);
-            if ($composerStatus === 0 && $composerCheck) {
+            // Используем найденные пути к composer и npm (определены выше)
+            if (isset($composerCmd) && $composerCmd) {
                 $output = [];
-                exec('cd ' . base_path() . ' && composer install --no-interaction --prefer-dist --optimize-autoloader 2>&1', $output, $status);
-                $allOutput['composer_install'] = ['status' => $status, 'output' => $output];
+                exec('cd ' . base_path() . ' && ' . $composerCmd . ' install --no-interaction --prefer-dist --optimize-autoloader 2>&1', $output, $status);
+                $allOutput['composer_install'] = ['status' => $status, 'output' => $output, 'composer_path' => $composerCmd];
                 if ($status !== 0) {
-                    Log::warning('Deploy: Composer install failed, but continuing', ['output' => $output, 'status' => $status]);
-                    // Не возвращаем ошибку, продолжаем выполнение
+                    Log::warning('Deploy: Composer install failed, but continuing', ['output' => $output, 'status' => $status, 'composer_path' => $composerCmd]);
+                } else {
+                    Log::info('Deploy: Composer install successful', ['composer_path' => $composerCmd]);
                 }
             } else {
                 Log::info('Deploy: Composer not found, skipping composer install');
                 $allOutput['composer_install'] = ['status' => 'skipped', 'output' => ['Composer not found']];
             }
 
-            $output = [];
-            // Проверяем наличие npm перед выполнением
-            $npmCheck = exec('command -v npm 2>&1', $npmOutput, $npmStatus);
-            if ($npmStatus === 0 && $npmCheck) {
+            // Используем найденный путь к npm
+            if (isset($npmCmd) && $npmCmd) {
                 $output = [];
-                exec('cd ' . base_path() . ' && npm install 2>&1', $output, $status);
-                $allOutput['npm_install'] = ['status' => $status, 'output' => $output];
+                // Если npmCmd содержит bash -c (NVM), используем как есть
+                if (strpos($npmCmd, 'bash -c') !== false) {
+                    exec('cd ' . base_path() . ' && ' . $npmCmd . ' install 2>&1', $output, $status);
+                } else {
+                    exec('cd ' . base_path() . ' && ' . $npmCmd . ' install 2>&1', $output, $status);
+                }
+                $allOutput['npm_install'] = ['status' => $status, 'output' => $output, 'npm_path' => $npmCmd];
                 if ($status !== 0) {
-                    Log::warning('Deploy: NPM install failed, but continuing', ['output' => $output, 'status' => $status]);
+                    Log::warning('Deploy: NPM install failed, but continuing', ['output' => $output, 'status' => $status, 'npm_path' => $npmCmd]);
+                } else {
+                    Log::info('Deploy: NPM install successful', ['npm_path' => $npmCmd]);
                 }
 
                 // Сборка проекта
                 $output = [];
-                exec('cd ' . base_path() . ' && npx vite build 2>&1', $output, $status);
-                $allOutput['npm_build'] = ['status' => $status, 'output' => $output];
+                if (strpos($npmCmd, 'bash -c') !== false) {
+                    // Для NVM используем npx через ту же команду
+                    $nvmNpmCmd = str_replace(' && npm', '', $npmCmd);
+                    exec('cd ' . base_path() . ' && ' . $nvmNpmCmd . ' && npx vite build 2>&1', $output, $status);
+                } else {
+                    exec('cd ' . base_path() . ' && ' . $npmCmd . ' run build 2>&1', $output, $status);
+                }
+                $allOutput['npm_build'] = ['status' => $status, 'output' => $output, 'npm_path' => $npmCmd];
                 if ($status !== 0) {
-                    Log::warning('Deploy: NPM build failed, but continuing', ['output' => $output, 'status' => $status]);
+                    Log::warning('Deploy: NPM build failed, but continuing', ['output' => $output, 'status' => $status, 'npm_path' => $npmCmd]);
+                } else {
+                    Log::info('Deploy: NPM build successful', ['npm_path' => $npmCmd]);
                 }
             } else {
                 Log::info('Deploy: NPM not found, skipping npm install and build');

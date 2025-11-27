@@ -1,7 +1,8 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Если запрос идет не к существующему файлу или директории
+    # Если запрос идет к API или другим маршрутам Laravel
+    # И это не существующий файл или директория
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     
@@ -9,6 +10,7 @@
     RewriteCond %{REQUEST_URI} !^/public/
     
     # Перенаправляем в public директорию
-    RewriteRule ^(.*)$ public/$1 [L]
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
 </IfModule>
+
 

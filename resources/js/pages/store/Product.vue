@@ -302,8 +302,8 @@ export default {
         const fetchProduct = async () => {
             try {
                 loading.value = true;
-                const productId = route.params.id;
-                const response = await axios.get(`/api/store/products/${productId}`);
+                const productSlug = route.params.slug;
+                const response = await axios.get(`/api/store/products/${productSlug}`);
                 product.value = response.data.data || response.data;
                 
                 // Устанавливаем основное изображение

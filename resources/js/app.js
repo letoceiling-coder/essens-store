@@ -193,7 +193,7 @@ const routes = [
         meta: { requiresAuth: false },
     },
     {
-        path: '/product/:id',
+        path: '/product/:slug',
         name: 'product',
         component: () => import('./pages/store/Product.vue'),
         meta: { requiresAuth: false },

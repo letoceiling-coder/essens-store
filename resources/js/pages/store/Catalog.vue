@@ -567,7 +567,7 @@
                                 'bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group',
                                 gridColumns === 2 ? 'flex flex-col' : ''
                             ]"
-                            @click="$router.push(`/product/${product.id}`)"
+                            @click="$router.push(`/product/${product.slug || product.id}`)"
                         >
                             <div class="aspect-square bg-muted flex items-center justify-center overflow-hidden relative">
                                 <img

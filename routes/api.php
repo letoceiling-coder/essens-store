@@ -41,7 +41,7 @@ Route::prefix('store')->group(function () {
     // Товары
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/featured', [ProductController::class, 'featured']);
-    Route::get('/products/{id}', [ProductController::class, 'show']);
+    Route::get('/products/{slug}', [ProductController::class, 'show']); // slug или id для обратной совместимости
     Route::get('/products/sku/{sku}', [ProductController::class, 'showBySku']);
 });
 

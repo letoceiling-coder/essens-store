@@ -118,15 +118,19 @@ class ProductController extends Controller
     /**
      * Display the specified product.
      */
-    public function show(string $id): ProductResource
+    public function show(string $slug): ProductResource
     {
+        // Поддерживаем как slug, так и id для обратной совместимости
         $product = Product::with([
             'subcategory.category',
             'images',
             'primaryImage',
             'variants',
             'promotions'
-        ])->findOrFail($id);
+        ])->where(function ($query) use ($slug) {
+            $query->where('slug', $slug)
+                  ->orWhere('id', $slug);
+        })->firstOrFail();
         
         return new ProductResource($product);
     }

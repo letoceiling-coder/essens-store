@@ -96,7 +96,7 @@
                         v-for="product in products"
                         :key="product.id"
                         class="bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                        @click="$router.push(`/product/${product.id}`)"
+                        @click="$router.push(`/product/${product.slug || product.id}`)"
                     >
                         <div class="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                             <img

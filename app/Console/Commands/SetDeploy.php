@@ -107,9 +107,14 @@ class SetDeploy extends Command
             // Пробуем несколько вариантов URL, если первый не работает
             $urlsToTry = [$deployUrl];
             
+            // Пробуем версию endpoint для проверки доступности API
+            $versionUrl = rtrim($serverUrl, '/') . '/api/deploy/version';
+            $urlsToTry[] = $versionUrl;
+            
             // Если URL содержит домен без пути, пробуем добавить /public
             if (preg_match('/^https?:\/\/[^\/]+$/', $serverUrl)) {
                 $urlsToTry[] = rtrim($serverUrl, '/') . '/public/api/deploy';
+                $urlsToTry[] = rtrim($serverUrl, '/') . '/public/api/deploy/version';
             }
             
             $response = null;

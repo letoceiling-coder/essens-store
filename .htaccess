@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Если запрос идет не к существующему файлу или директории
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # И запрос не начинается с /public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    
+    # Перенаправляем в public директорию
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+

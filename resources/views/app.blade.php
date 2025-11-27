@@ -22,13 +22,13 @@
     
     <!-- Structured Data (будет обновляться через JavaScript) -->
     <script type="application/ld+json" id="base-organization-schema">
-    {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "Essens",
-        "url": "{{ config('app.url', 'https://essens-store.ru') }}",
-        "description": "Интернет-магазин качественной натуральной продукции для здоровья и красоты"
-    }
+    {!! json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'Organization',
+        'name' => 'Essens',
+        'url' => config('app.url', 'https://essens-store.ru'),
+        'description' => 'Интернет-магазин качественной натуральной продукции для здоровья и красоты'
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
     </script>
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])

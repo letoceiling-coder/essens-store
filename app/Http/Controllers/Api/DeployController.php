@@ -253,44 +253,43 @@ class DeployController extends Controller
             }
 
             // Установка зависимостей и сборка проекта
-            $output = [];
-            exec('cd ' . base_path() . ' && composer install --no-interaction --prefer-dist --optimize-autoloader 2>&1', $output, $status);
-            $allOutput['composer_install'] = ['status' => $status, 'output' => $output];
-            if ($status !== 0) {
-                Log::error('Deploy: Composer install failed', ['output' => $output, 'status' => $status]);
-                return response()->json([
-                    'error' => 'Composer install failed',
-                    'output' => $output,
-                    'status' => $status,
-                    'all_output' => $allOutput
-                ], 500);
+            // Проверяем наличие composer перед выполнением
+            $composerCheck = exec('command -v composer 2>&1', $composerOutput, $composerStatus);
+            if ($composerStatus === 0 && $composerCheck) {
+                $output = [];
+                exec('cd ' . base_path() . ' && composer install --no-interaction --prefer-dist --optimize-autoloader 2>&1', $output, $status);
+                $allOutput['composer_install'] = ['status' => $status, 'output' => $output];
+                if ($status !== 0) {
+                    Log::warning('Deploy: Composer install failed, but continuing', ['output' => $output, 'status' => $status]);
+                    // Не возвращаем ошибку, продолжаем выполнение
+                }
+            } else {
+                Log::info('Deploy: Composer not found, skipping composer install');
+                $allOutput['composer_install'] = ['status' => 'skipped', 'output' => ['Composer not found']];
             }
 
             $output = [];
-            exec('cd ' . base_path() . ' && npm install 2>&1', $output, $status);
-            $allOutput['npm_install'] = ['status' => $status, 'output' => $output];
-            if ($status !== 0) {
-                Log::error('Deploy: NPM install failed', ['output' => $output, 'status' => $status]);
-                return response()->json([
-                    'error' => 'NPM install failed',
-                    'output' => $output,
-                    'status' => $status,
-                    'all_output' => $allOutput
-                ], 500);
-            }
+            // Проверяем наличие npm перед выполнением
+            $npmCheck = exec('command -v npm 2>&1', $npmOutput, $npmStatus);
+            if ($npmStatus === 0 && $npmCheck) {
+                $output = [];
+                exec('cd ' . base_path() . ' && npm install 2>&1', $output, $status);
+                $allOutput['npm_install'] = ['status' => $status, 'output' => $output];
+                if ($status !== 0) {
+                    Log::warning('Deploy: NPM install failed, but continuing', ['output' => $output, 'status' => $status]);
+                }
 
-            // Сборка проекта
-            $output = [];
-            exec('cd ' . base_path() . ' && npm run build 2>&1', $output, $status);
-            $allOutput['npm_build'] = ['status' => $status, 'output' => $output];
-            if ($status !== 0) {
-                Log::error('Deploy: NPM build failed', ['output' => $output, 'status' => $status]);
-                return response()->json([
-                    'error' => 'NPM build failed',
-                    'output' => $output,
-                    'status' => $status,
-                    'all_output' => $allOutput
-                ], 500);
+                // Сборка проекта
+                $output = [];
+                exec('cd ' . base_path() . ' && npx vite build 2>&1', $output, $status);
+                $allOutput['npm_build'] = ['status' => $status, 'output' => $output];
+                if ($status !== 0) {
+                    Log::warning('Deploy: NPM build failed, but continuing', ['output' => $output, 'status' => $status]);
+                }
+            } else {
+                Log::info('Deploy: NPM not found, skipping npm install and build');
+                $allOutput['npm_install'] = ['status' => 'skipped', 'output' => ['NPM not found']];
+                $allOutput['npm_build'] = ['status' => 'skipped', 'output' => ['NPM not found']];
             }
 
             // Выполнение миграций

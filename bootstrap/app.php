@@ -49,6 +49,17 @@ return Application::configure(basePath: dirname(__DIR__))
         
         // Для всех исключений в API маршрутах возвращаем JSON
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            // Логируем исключения для Telegram webhook
+            if ($request->is('api/telegram/webhook/*')) {
+                \Illuminate\Support\Facades\Log::error('Exception in Telegram webhook', [
+                    'path' => $request->path(),
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+            
             if ($request->is('api/*') || $request->expectsJson() || $request->wantsJson()) {
                 $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 

@@ -284,32 +284,13 @@ class DeployController extends Controller
             // Проверяем наличие скрипта deploy.sh
             $deployScript = $projectPath . '/deploy.sh';
             $deployScriptExists = file_exists($deployScript);
-            $deployScriptExecutable = $deployScriptExists && is_executable($deployScript);
             
-            // Логируем состояние перед проверкой
-            Log::info('Deploy: Pre-deploy.sh check', [
-                'git_pull_status' => $status,
-                'composer_cmd' => $composerCmd,
-                'npm_cmd' => $npmCmd,
-                'composer_found' => (bool)$composerCmd,
-                'npm_found' => (bool)$npmCmd,
-                'deploy_script_exists' => $deployScriptExists,
-                'deploy_script_executable' => $deployScriptExecutable,
-                'should_use_deploy_script' => ($status !== 0 || !$composerCmd || !$npmCmd) && $deployScriptExists
-            ]);
-            
-            // Если git pull не работает ИЛИ composer/npm не найдены, используем deploy.sh
-            if ($status !== 0 || !$composerCmd || !$npmCmd) {
+            // Если git pull не работает, пробуем использовать deploy.sh
+            if ($status !== 0) {
                 if ($deployScriptExists) {
-                    Log::info('Deploy: Using deploy.sh script', [
+                    Log::info('Deploy: Git pull failed, using deploy.sh script', [
                         'script' => $deployScript,
-                        'exists' => $deployScriptExists,
-                        'executable' => $deployScriptExecutable,
-                        'reason' => $status !== 0 ? 'git_pull_failed' : 'tools_not_found',
-                        'composer_found' => (bool)$composerCmd,
-                        'npm_found' => (bool)$npmCmd,
-                        'composer_cmd' => $composerCmd,
-                        'npm_cmd' => $npmCmd
+                        'git_pull_status' => $status
                     ]);
                     
                     // Выполняем скрипт deploy.sh, который загружает PATH и NVM
@@ -338,7 +319,7 @@ class DeployController extends Controller
                             'hint' => 'Проверьте права на выполнение скрипта deploy.sh: chmod +x deploy.sh'
                         ], 500);
                     }
-                } elseif ($status !== 0) {
+                } else {
                     // Если git pull не работает и скрипта нет
                     Log::error('Deploy: Git pull failed', ['output' => $output, 'status' => $status]);
                     return response()->json([
@@ -349,6 +330,44 @@ class DeployController extends Controller
                         'status' => $status,
                         'all_output' => $allOutput,
                         'hint' => 'Выполните на сервере: cd ' . $projectPath . ' && git config --local safe.directory ' . $projectPath . ' или создайте скрипт deploy.sh'
+                    ], 500);
+                }
+            }
+            
+            // Если composer или npm не найдены, используем deploy.sh (он загружает правильное окружение)
+            if ((!$composerCmd || !$npmCmd) && $deployScriptExists) {
+                Log::info('Deploy: Composer or NPM not found, using deploy.sh script', [
+                    'script' => $deployScript,
+                    'composer_found' => (bool)$composerCmd,
+                    'npm_found' => (bool)$npmCmd,
+                    'composer_cmd' => $composerCmd,
+                    'npm_cmd' => $npmCmd
+                ]);
+                
+                // Выполняем скрипт deploy.sh, который загружает PATH и NVM
+                $output = [];
+                $scriptEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' GIT_CONFIG_NOSYSTEM=1 ';
+                exec($scriptEnv . 'cd ' . $projectPath . ' && bash ' . escapeshellarg($deployScript) . ' 2>&1', $output, $status);
+                
+                if ($status === 0) {
+                    Log::info('Deploy: deploy.sh executed successfully');
+                    // Скрипт уже выполнил все операции, возвращаем успех
+                    return response()->json([
+                        'status' => 'Deployment successful (via deploy.sh)',
+                        'method' => 'deploy.sh',
+                        'all_output' => $allOutput,
+                        'script_output' => $output
+                    ]);
+                } else {
+                    Log::error('Deploy: deploy.sh failed', ['output' => $output, 'status' => $status]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'deploy.sh failed',
+                        'error' => 'deploy.sh failed',
+                        'output' => $output,
+                        'status' => $status,
+                        'all_output' => $allOutput,
+                        'hint' => 'Проверьте права на выполнение скрипта deploy.sh: chmod +x deploy.sh'
                     ], 500);
                 }
             }

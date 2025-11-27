@@ -8,6 +8,9 @@ cd /home/d/dsc23ytp/essens/public_html || exit 1
 export GIT_SAFE_DIRECTORY=/home/d/dsc23ytp/essens/public_html
 export GIT_CONFIG_NOSYSTEM=1
 
+# Убеждаемся, что локальный git config настроен
+git config --local safe.directory /home/d/dsc23ytp/essens/public_html 2>/dev/null
+
 # Обновление из git
 git pull origin master || exit 1
 

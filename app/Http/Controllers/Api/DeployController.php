@@ -202,15 +202,54 @@ class DeployController extends Controller
             }
             $allOutput['git_pull'] = ['status' => $status, 'output' => $output];
             if ($status !== 0) {
-                Log::error('Deploy: Git pull failed', ['output' => $output, 'status' => $status]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Git pull failed',
-                    'error' => 'Git pull failed',
-                    'output' => $output,
-                    'status' => $status,
-                    'all_output' => $allOutput
-                ], 500);
+                // Если git pull не работает, пробуем использовать скрипт deploy.sh
+                $deployScript = $projectPath . '/deploy.sh';
+                if (file_exists($deployScript)) {
+                    Log::info('Deploy: Git pull failed, trying deploy.sh script', ['script' => $deployScript]);
+                    
+                    // Определяем владельца репозитория
+                    $repoOwner = @fileowner($projectPath);
+                    $ownerInfo = $repoOwner ? @posix_getpwuid($repoOwner) : null;
+                    $ownerUser = $ownerInfo['name'] ?? 'dsc23ytp';
+                    
+                    // Выполняем скрипт от имени владельца репозитория
+                    $output = [];
+                    // Используем bash с переменными окружения для выполнения скрипта
+                    $scriptEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' GIT_CONFIG_NOSYSTEM=1 ';
+                    exec($scriptEnv . 'cd ' . $projectPath . ' && bash ' . escapeshellarg($deployScript) . ' 2>&1', $output, $status);
+                    
+                    if ($status === 0) {
+                        Log::info('Deploy: deploy.sh executed successfully');
+                        // Скрипт уже выполнил все операции, возвращаем успех
+                        return response()->json([
+                            'status' => 'Deployment successful (via deploy.sh)',
+                            'method' => 'deploy.sh',
+                            'all_output' => $allOutput
+                        ]);
+                    } else {
+                        Log::error('Deploy: deploy.sh failed', ['output' => $output, 'status' => $status]);
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Git pull failed and deploy.sh also failed',
+                            'error' => 'Git pull failed',
+                            'output' => $output,
+                            'status' => $status,
+                            'all_output' => $allOutput,
+                            'hint' => 'Проверьте права на выполнение скрипта deploy.sh: chmod +x deploy.sh'
+                        ], 500);
+                    }
+                } else {
+                    Log::error('Deploy: Git pull failed', ['output' => $output, 'status' => $status]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Git pull failed',
+                        'error' => 'Git pull failed',
+                        'output' => $output,
+                        'status' => $status,
+                        'all_output' => $allOutput,
+                        'hint' => 'Выполните на сервере: cd ' . $projectPath . ' && git config --local safe.directory ' . $projectPath . ' или создайте скрипт deploy.sh'
+                    ], 500);
+                }
             }
 
             // Установка зависимостей и сборка проекта

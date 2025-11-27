@@ -15,15 +15,22 @@ export NVM_DIR="$HOME/.nvm"
 export GIT_SAFE_DIRECTORY=/home/d/dsc23ytp/essens/public_html
 export GIT_CONFIG_NOSYSTEM=1
 
+# Определяем git команду с флагом safe.directory для всех операций
+GIT_CMD="git -c safe.directory=/home/d/dsc23ytp/essens/public_html"
+
 # Убеждаемся, что локальный git config настроен
-git config --local safe.directory /home/d/dsc23ytp/essens/public_html 2>/dev/null
+$GIT_CMD config --local safe.directory /home/d/dsc23ytp/essens/public_html 2>/dev/null || true
 
 # Добавляем deploy.sh и install-tools.sh в gitignore, если их там нет (чтобы избежать конфликтов)
-if ! grep -q "^deploy.sh$" .gitignore 2>/dev/null; then
-    echo "deploy.sh" >> .gitignore
+if ! $GIT_CMD check-ignore deploy.sh &>/dev/null; then
+    if ! grep -q "^deploy.sh$" .gitignore 2>/dev/null; then
+        echo "deploy.sh" >> .gitignore
+    fi
 fi
-if ! grep -q "^install-tools.sh$" .gitignore 2>/dev/null; then
-    echo "install-tools.sh" >> .gitignore
+if ! $GIT_CMD check-ignore install-tools.sh &>/dev/null; then
+    if ! grep -q "^install-tools.sh$" .gitignore 2>/dev/null; then
+        echo "install-tools.sh" >> .gitignore
+    fi
 fi
 
 # Удаляем конфликтующие файлы перед обновлением
@@ -31,21 +38,21 @@ if [ -f "install-tools.sh" ]; then
     rm -f install-tools.sh
 fi
 
-# Сохраняем текущий deploy.sh во временный файл, если есть локальные изменения
-if [ -n "$(git status --porcelain deploy.sh 2>/dev/null)" ]; then
-    echo "Warning: Local changes detected in deploy.sh, stashing..."
-    git stash push -m "Auto-stash before deploy" deploy.sh 2>/dev/null || true
-fi
-
 # Получаем последние изменения из удаленного репозитория
-git fetch origin master 2>&1 || exit 1
+$GIT_CMD fetch origin master 2>&1 || {
+    echo "Warning: git fetch failed, but continuing..."
+    # Не выходим, продолжаем выполнение
+}
 
 # Сбрасываем локальные изменения и применяем изменения из удаленного репозитория
 # Используем --force для принудительного сброса
-git reset --hard origin/master 2>&1 || exit 1
+$GIT_CMD reset --hard origin/master 2>&1 || {
+    echo "Warning: git reset failed, but continuing..."
+    # Не выходим, продолжаем выполнение
+}
 
 # Очищаем неотслеживаемые файлы, которые могут конфликтовать
-git clean -fd 2>/dev/null || true
+$GIT_CMD clean -fd 2>/dev/null || true
 
 # Проверка версии PHP
 PHP_VERSION=$(php -r "echo PHP_VERSION;" 2>/dev/null)

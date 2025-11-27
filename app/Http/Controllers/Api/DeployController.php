@@ -97,21 +97,41 @@ class DeployController extends Controller
                 ], 500);
             }
 
+            // Функция для безопасного выполнения git команд
+            $projectPath = base_path();
+            $gitSafePath = escapeshellarg($projectPath);
+            
+            // Используем переменную окружения GIT_SAFE_DIRECTORY (работает без sudo)
+            // И устанавливаем safe.directory через флаг -c в каждой команде
+            
             // Проверка, что это git репозиторий
+            // Используем переменную окружения GIT_SAFE_DIRECTORY для обхода проблемы с правами
+            $env = [
+                'GIT_SAFE_DIRECTORY' => $projectPath,
+                'HOME' => $_SERVER['HOME'] ?? '/tmp',
+            ];
+            $envString = '';
+            foreach ($env as $key => $value) {
+                $envString .= $key . '=' . escapeshellarg($value) . ' ';
+            }
+            
             $output = [];
-            exec('cd ' . base_path() . ' && git rev-parse --git-dir 2>&1', $output, $status);
+            exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' rev-parse --git-dir 2>&1', $output, $status);
             if ($status !== 0) {
                 // Проверяем, не является ли это проблемой с правами доступа
                 $outputStr = implode(' ', $output);
                 if (strpos($outputStr, 'dubious ownership') !== false) {
-                    // Пытаемся добавить директорию в safe.directory
-                    $projectPath = base_path();
-                    exec('git config --global --add safe.directory ' . escapeshellarg($projectPath) . ' 2>&1', $safeOutput, $safeStatus);
-                    Log::info('Deploy: Added directory to safe.directory', ['path' => $projectPath, 'output' => $safeOutput]);
+                    // Пытаемся использовать локальный git config в репозитории
+                    exec('cd ' . $projectPath . ' && git config --local --add safe.directory ' . $gitSafePath . ' 2>&1', $localOutput, $localStatus);
+                    Log::info('Deploy: Added directory to local git config', [
+                        'path' => $projectPath, 
+                        'output' => $localOutput,
+                        'status' => $localStatus
+                    ]);
                     
-                    // Повторяем проверку
+                    // Повторяем проверку с переменной окружения
                     $output = [];
-                    exec('cd ' . base_path() . ' && git rev-parse --git-dir 2>&1', $output, $status);
+                    exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' rev-parse --git-dir 2>&1', $output, $status);
                 }
                 
                 if ($status !== 0) {
@@ -122,13 +142,14 @@ class DeployController extends Controller
                         'error' => 'Git репозиторий не найден или не инициализирован',
                         'output' => $output,
                         'status' => $status,
+                        'hint' => 'Попробуйте выполнить на сервере: cd ' . $projectPath . ' && git config --local --add safe.directory ' . $projectPath
                     ], 500);
                 }
             }
 
             // Проверка наличия удаленного репозитория
             $output = [];
-            exec('cd ' . base_path() . ' && git remote -v 2>&1', $output, $status);
+            exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' remote -v 2>&1', $output, $status);
             $allOutput['git_remote_check'] = ['status' => $status, 'output' => $output];
             if ($status !== 0 || empty($output)) {
                 Log::warning('Deploy: No remote repository configured', ['output' => $output]);
@@ -136,8 +157,8 @@ class DeployController extends Controller
 
             // Обновление файлов из git
             $output = [];
-            $projectPath = base_path();
-            exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' pull origin master 2>&1', $output, $status);
+            $envString = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' ';
+            exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' pull origin master 2>&1', $output, $status);
             $allOutput['git_pull'] = ['status' => $status, 'output' => $output];
             if ($status !== 0) {
                 Log::error('Deploy: Git pull failed', ['output' => $output, 'status' => $status]);
@@ -222,7 +243,7 @@ class DeployController extends Controller
 
             // Получаем информацию о текущем коммите
             $output = [];
-            exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' log -1 --pretty=format:"%H|%s|%an|%ad" --date=iso 2>&1', $output, $status);
+            exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' log -1 --pretty=format:"%H|%s|%an|%ad" --date=iso 2>&1', $output, $status);
             $commitInfo = [];
             if ($status === 0 && !empty($output)) {
                 $commitData = explode('|', $output[0]);
@@ -236,7 +257,7 @@ class DeployController extends Controller
             
             // Получаем короткий хеш коммита
             $output = [];
-            exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' rev-parse --short HEAD 2>&1', $output, $status);
+            exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' rev-parse --short HEAD 2>&1', $output, $status);
             $shortHash = $status === 0 && !empty($output) ? $output[0] : null;
             
             // Получаем дату последнего обновления файлов

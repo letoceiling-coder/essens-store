@@ -94,12 +94,22 @@ class SetDeploy extends Command
         
         $this->info('Отправка запроса на сервер для обновления проекта...');
         try {
-            $response = Http::timeout(300) // 5 минут таймаут для деплоя
+            // Формируем URL правильно
+            $deployUrl = rtrim($serverUrl, '/');
+            // Если в URL уже есть /api/deploy, не добавляем его снова
+            if (strpos($deployUrl, '/api/deploy') === false) {
+                $deployUrl .= '/api/deploy';
+            }
+            
+            $this->line('URL: ' . $deployUrl);
+            
+            $response = Http::withoutVerifying() // Отключаем проверку SSL сертификата
+                ->timeout(300) // 5 минут таймаут для деплоя
                 ->withHeaders([
                     'Deploy-Secret' => $deploySecret,
                     'Accept' => 'application/json',
                 ])
-                ->post(rtrim($serverUrl, '/') . '/api/deploy');
+                ->post($deployUrl);
             
             if ($response->successful()) {
                 $this->info('Обновление на сервере выполнено успешно');

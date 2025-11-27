@@ -66,6 +66,8 @@ if [ "$PHP_MAJOR" -lt 8 ] || ([ "$PHP_MAJOR" -eq 8 ] && [ "$PHP_MINOR" -lt 2 ]);
 else
     # Установка зависимостей
     if command -v composer &> /dev/null; then
+        echo "Info: Composer found at $(command -v composer)"
+        composer --version
         composer install --no-interaction --prefer-dist --optimize-autoloader || echo "Warning: composer install failed, but continuing..."
     else
         echo "Warning: composer not found, skipping composer install"
@@ -74,6 +76,8 @@ fi
 
 # Установка npm зависимостей (если npm доступен)
 if command -v npm &> /dev/null; then
+    echo "Info: NPM found at $(command -v npm)"
+    npm --version
     npm install || echo "Warning: npm install failed, but continuing..."
     # Используем npx для запуска vite, чтобы избежать проблем с правами
     npx vite build || echo "Warning: npm build failed, but continuing..."

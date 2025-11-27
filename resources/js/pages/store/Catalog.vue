@@ -553,7 +553,7 @@
                         :class="[
                             'grid',
                             gridColumns === 1 && 'grid-cols-1 gap-4',
-                            gridColumns === 2 && 'grid-cols-2 gap-4',
+                            gridColumns === 2 && 'grid-cols-2 gap-2',
                             gridColumns === 3 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6',
                             gridColumns === 4 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4',
                             gridColumns === 5 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3',
@@ -577,14 +577,17 @@
                                 />
                                 <svg v-else :class="[
                                     'text-muted-foreground',
-                                    gridColumns === 4 ? 'w-12 h-12' : gridColumns === 5 ? 'w-10 h-10' : 'w-16 h-16'
+                                    gridColumns === 1 ? 'w-16 h-16' :
+                                    gridColumns === 2 ? 'w-12 h-12' :
+                                    gridColumns === 4 ? 'w-12 h-12' : 
+                                    gridColumns === 5 ? 'w-10 h-10' : 'w-16 h-16'
                                 ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                                 <div v-if="product.promotions?.length > 0" :class="[
                                     'absolute top-1 left-1 bg-red-500 text-white rounded',
                                     gridColumns === 1 ? 'text-xs px-2 py-1' :
-                                    gridColumns === 2 ? 'text-xs px-2 py-1' :
+                                    gridColumns === 2 ? 'text-[10px] px-1.5 py-0.5' :
                                     gridColumns === 4 ? 'text-[10px] px-1.5 py-0.5' : 
                                     gridColumns === 5 ? 'text-[9px] px-1 py-0.5' : 'text-xs px-2 py-1'
                                 ]">
@@ -594,7 +597,7 @@
                                     <span :class="[
                                         'bg-white text-foreground rounded-lg font-medium',
                                         gridColumns === 1 ? 'px-4 py-2' :
-                                        gridColumns === 2 ? 'px-4 py-2' :
+                                        gridColumns === 2 ? 'px-2 py-1 text-xs' :
                                         gridColumns === 4 ? 'px-2 py-1 text-xs' : 
                                         gridColumns === 5 ? 'px-1.5 py-0.5 text-[10px]' : 'px-4 py-2'
                                     ]">Нет в наличии</span>
@@ -602,42 +605,48 @@
                             </div>
                             <div :class="[
                                 gridColumns === 1 ? 'p-4' :
-                                gridColumns === 2 ? 'p-4' :
+                                gridColumns === 2 ? 'p-2' :
                                 gridColumns === 4 ? 'p-3' : 
                                 gridColumns === 5 ? 'p-2' : 'p-4'
                             ]">
                                 <h3 :class="[
-                                    'font-semibold mb-1.5 line-clamp-2',
+                                    'font-semibold mb-1 line-clamp-2',
                                     gridColumns === 1 ? 'text-base' :
-                                    gridColumns === 2 ? 'text-base' :
+                                    gridColumns === 2 ? 'text-sm' :
                                     gridColumns === 4 ? 'text-sm' : 
                                     gridColumns === 5 ? 'text-xs' : 'text-base'
                                 ]">{{ product.name }}</h3>
-                                <p v-if="product.description && gridColumns < 5" :class="[
+                                <p v-if="product.description && gridColumns < 5 && gridColumns !== 2" :class="[
                                     'text-muted-foreground mb-2 line-clamp-2',
                                     gridColumns === 1 ? 'text-sm' :
-                                    gridColumns === 2 ? 'text-sm' :
                                     gridColumns === 4 ? 'text-xs' : 'text-sm'
                                 ]">
                                     {{ product.description }}
                                 </p>
                                 <div :class="[
                                     'flex items-center justify-between',
+                                    gridColumns === 2 ? 'flex-col gap-1.5' :
                                     gridColumns === 5 ? 'flex-col gap-2' : ''
                                 ]">
-                                    <div :class="gridColumns === 5 ? 'w-full' : ''">
-                                        <div :class="gridColumns === 5 ? 'flex flex-col' : ''">
+                                    <div :class="[
+                                        gridColumns === 2 ? 'w-full' :
+                                        gridColumns === 5 ? 'w-full' : ''
+                                    ]">
+                                        <div :class="[
+                                            gridColumns === 2 ? 'flex flex-col' :
+                                            gridColumns === 5 ? 'flex flex-col' : ''
+                                        ]">
                                             <span :class="[
                                                 'font-bold text-primary',
                                                 gridColumns === 1 ? 'text-xl' :
-                                                gridColumns === 2 ? 'text-xl' :
+                                                gridColumns === 2 ? 'text-base' :
                                                 gridColumns === 4 ? 'text-lg' : 
                                                 gridColumns === 5 ? 'text-base' : 'text-xl'
                                             ]">{{ formatPrice(getProductPrice(product)) }}</span>
                                             <span v-if="(product.recommended_price && product.old_price) || product.promotions?.length > 0" :class="[
                                                 'text-muted-foreground line-through',
                                                 gridColumns === 1 ? 'ml-2 text-sm' :
-                                                gridColumns === 2 ? 'ml-2 text-sm' :
+                                                gridColumns === 2 ? 'ml-0 text-xs' :
                                                 gridColumns === 4 ? 'ml-1.5 text-xs' : 
                                                 gridColumns === 5 ? 'ml-1 text-[10px]' : 'ml-2 text-sm'
                                             ]">
@@ -651,7 +660,7 @@
                                         :class="[
                                             'bg-primary text-primary-contrast rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed',
                                             gridColumns === 1 ? 'px-4 py-2 text-sm' :
-                                            gridColumns === 2 ? 'px-4 py-2 text-sm' :
+                                            gridColumns === 2 ? 'px-2 py-1.5 text-xs w-full' :
                                             gridColumns === 4 ? 'px-3 py-1.5 text-xs' : 
                                             gridColumns === 5 ? 'px-2 py-1 text-[10px] w-full' : 'px-4 py-2 text-sm'
                                         ]"

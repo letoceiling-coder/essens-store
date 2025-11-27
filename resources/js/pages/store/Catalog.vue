@@ -553,7 +553,7 @@
                         :class="[
                             'grid',
                             gridColumns === 1 && 'grid-cols-1 gap-4',
-                            gridColumns === 2 && 'grid-cols-1 sm:grid-cols-2 gap-4',
+                            gridColumns === 2 && 'grid-cols-2 gap-4',
                             gridColumns === 3 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6',
                             gridColumns === 4 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4',
                             gridColumns === 5 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3',

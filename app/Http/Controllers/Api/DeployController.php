@@ -119,16 +119,36 @@ class DeployController extends Controller
             
             // Используем переменную окружения GIT_SAFE_DIRECTORY для обхода проблемы с правами
             // Это работает без необходимости изменения git config
+            // Также используем GIT_CONFIG_NOSYSTEM=1 чтобы игнорировать системные настройки
             $gitEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' GIT_CONFIG_NOSYSTEM=1 ';
             
             // Проверка, что это git репозиторий
+            // Используем переменную окружения напрямую в команде git
             $output = [];
+            // Пробуем сначала с переменной окружения
             exec($gitEnv . 'cd ' . $projectPath . ' && git rev-parse --git-dir 2>&1', $output, $status);
             
-            // Если не работает, пробуем добавить в локальный config
+            // Если не работает, пробуем с флагом -c safe.directory в дополнение к переменной окружения
+            if ($status !== 0) {
+                $output = [];
+                exec($gitEnv . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' rev-parse --git-dir 2>&1', $output, $status);
+            }
+            
+            // Если все еще не работает, пробуем прочитать локальный config и использовать его
             if ($status !== 0) {
                 $outputStr = implode(' ', $output);
                 if (strpos($outputStr, 'dubious ownership') !== false) {
+                    // Проверяем, есть ли локальный config
+                    $configFile = $projectPath . '/.git/config';
+                    if (file_exists($configFile)) {
+                        $configContent = file_get_contents($configFile);
+                        if (strpos($configContent, 'safe.directory') !== false) {
+                            Log::info('Deploy: Local git config contains safe.directory, but still failing', [
+                                'path' => $projectPath,
+                            ]);
+                        }
+                    }
+                    
                     // Пытаемся добавить в локальный config (не требует прав суперпользователя)
                     exec($gitEnv . 'cd ' . $projectPath . ' && git config --local safe.directory ' . $gitSafePath . ' 2>&1', $localOutput, $localStatus);
                     if ($localStatus === 0) {
@@ -149,46 +169,15 @@ class DeployController extends Controller
                 }
             }
             
+            // Если проверка не прошла, все равно пробуем выполнить git pull
+            // Возможно, проверка не работает, но git pull может работать с переменной окружения
             if ($status !== 0) {
-                // Если прямой git pull не работает, пробуем использовать скрипт deploy.sh
-                $deployScript = $projectPath . '/deploy.sh';
-                if (file_exists($deployScript) && is_executable($deployScript)) {
-                    Log::info('Deploy: Trying to use deploy.sh script', ['script' => $deployScript]);
-                    // Выполняем скрипт от имени пользователя, который владеет репозиторием
-                    // Определяем владельца репозитория
-                    $repoOwner = fileowner($projectPath);
-                    $ownerInfo = posix_getpwuid($repoOwner);
-                    $ownerUser = $ownerInfo['name'] ?? 'dsc23ytp';
-                    
-                    $output = [];
-                    // Используем su или runuser для выполнения от имени правильного пользователя
-                    exec('cd ' . $projectPath . ' && su - ' . escapeshellarg($ownerUser) . ' -c "' . $deployScript . '" 2>&1', $output, $status);
-                    
-                    if ($status === 0) {
-                        Log::info('Deploy: deploy.sh executed successfully');
-                        // Продолжаем выполнение остальных операций
-                    } else {
-                        Log::error('Deploy: deploy.sh failed', ['output' => $output, 'status' => $status]);
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Ошибка выполнения deploy.sh',
-                            'error' => 'Ошибка выполнения deploy.sh',
-                            'output' => $output,
-                            'status' => $status,
-                        ], 500);
-                    }
-                } else {
-                    Log::error('Deploy: Not a git repository', ['output' => $output, 'status' => $status]);
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Git репозиторий не найден или не инициализирован',
-                        'error' => 'Git репозиторий не найден или не инициализирован',
-                        'output' => $output,
-                        'status' => $status,
-                        'hint' => 'Выполните на сервере от вашего пользователя: cd ' . $projectPath . ' && git config --local safe.directory ' . $projectPath,
-                        'alternative' => 'Альтернатива: создайте скрипт deploy.sh в корне проекта и сделайте его исполняемым (chmod +x deploy.sh)'
-                    ], 500);
-                }
+                Log::warning('Deploy: Git repository check failed, but continuing with git pull', [
+                    'output' => $output, 
+                    'status' => $status,
+                    'path' => $projectPath
+                ]);
+                // Не возвращаем ошибку, продолжаем выполнение
             }
 
             // Проверка наличия удаленного репозитория

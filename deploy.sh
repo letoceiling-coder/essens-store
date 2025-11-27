@@ -26,16 +26,26 @@ if ! grep -q "^install-tools.sh$" .gitignore 2>/dev/null; then
     echo "install-tools.sh" >> .gitignore
 fi
 
-# Удаляем install-tools.sh, если он мешает обновлению
+# Удаляем конфликтующие файлы перед обновлением
 if [ -f "install-tools.sh" ]; then
     rm -f install-tools.sh
+fi
+
+# Сохраняем текущий deploy.sh во временный файл, если есть локальные изменения
+if [ -n "$(git status --porcelain deploy.sh 2>/dev/null)" ]; then
+    echo "Warning: Local changes detected in deploy.sh, stashing..."
+    git stash push -m "Auto-stash before deploy" deploy.sh 2>/dev/null || true
 fi
 
 # Получаем последние изменения из удаленного репозитория
 git fetch origin master 2>&1 || exit 1
 
 # Сбрасываем локальные изменения и применяем изменения из удаленного репозитория
-git reset --hard origin/master || exit 1
+# Используем --force для принудительного сброса
+git reset --hard origin/master 2>&1 || exit 1
+
+# Очищаем неотслеживаемые файлы, которые могут конфликтовать
+git clean -fd 2>/dev/null || true
 
 # Проверка версии PHP
 PHP_VERSION=$(php -r "echo PHP_VERSION;" 2>/dev/null)

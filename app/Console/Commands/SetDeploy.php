@@ -102,6 +102,7 @@ class SetDeploy extends Command
             }
             
             $this->line('URL: ' . $deployUrl);
+            $this->line('Используется секретный ключ: ' . (strlen($deploySecret) > 0 ? substr($deploySecret, 0, 4) . '...' : 'не указан'));
             
             $response = Http::withoutVerifying() // Отключаем проверку SSL сертификата
                 ->timeout(300) // 5 минут таймаут для деплоя

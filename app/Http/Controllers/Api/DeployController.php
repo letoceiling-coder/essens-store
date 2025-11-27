@@ -15,13 +15,38 @@ class DeployController extends Controller
     {
         try {
             $secret = env('DEPLOY_SECRET');
-            $clientSecret = $request->header('Deploy-Secret');
+            
+            // Пробуем получить заголовок разными способами (Laravel может нормализовать заголовки)
+            $clientSecret = $request->header('Deploy-Secret') 
+                ?? $request->header('deploy-secret')
+                ?? $request->header('DEPLOY-SECRET');
+
+            // Логируем для отладки (без полного секрета)
+            Log::info('Deploy: Secret check', [
+                'server_secret_set' => !empty($secret),
+                'server_secret_length' => $secret ? strlen($secret) : 0,
+                'client_secret_provided' => !empty($clientSecret),
+                'client_secret_length' => $clientSecret ? strlen($clientSecret) : 0,
+                'secrets_match' => $secret === $clientSecret,
+            ]);
+
+            if (empty($secret)) {
+                Log::error('Deploy: DEPLOY_SECRET not set on server');
+                return response()->json([
+                    'error' => 'DEPLOY_SECRET not configured on server'
+                ], 500);
+            }
 
             if ($secret !== $clientSecret) {
                 Log::warning('Deploy: Invalid secret', [
-                    'client_secret' => $clientSecret ? 'provided' : 'missing',
+                    'client_secret_provided' => $clientSecret ? 'yes' : 'no',
+                    'client_secret_length' => $clientSecret ? strlen($clientSecret) : 0,
+                    'server_secret_length' => strlen($secret),
                 ]);
-                return response()->json(['error' => 'Invalid secret'], 403);
+                return response()->json([
+                    'error' => 'Invalid secret',
+                    'hint' => 'Проверьте, что DEPLOY_SECRET в .env на сервере совпадает с DEPLOY_SECRET в .env на локальной машине'
+                ], 403);
             }
 
             $allOutput = [];

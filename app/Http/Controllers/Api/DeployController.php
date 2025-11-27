@@ -280,20 +280,23 @@ class DeployController extends Controller
                 exec($gitEnv . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' pull origin master 2>&1', $output, $status);
             }
             $allOutput['git_pull'] = ['status' => $status, 'output' => $output];
-            if ($status !== 0) {
-                // Если git pull не работает, пробуем использовать скрипт deploy.sh
-                $deployScript = $projectPath . '/deploy.sh';
-                if (file_exists($deployScript)) {
-                    Log::info('Deploy: Git pull failed, trying deploy.sh script', ['script' => $deployScript]);
+            
+            // Проверяем наличие скрипта deploy.sh
+            $deployScript = $projectPath . '/deploy.sh';
+            $useDeployScript = file_exists($deployScript) && is_executable($deployScript);
+            
+            // Если git pull не работает ИЛИ composer/npm не найдены, используем deploy.sh
+            if ($status !== 0 || !$composerCmd || !$npmCmd) {
+                if ($useDeployScript) {
+                    Log::info('Deploy: Using deploy.sh script', [
+                        'script' => $deployScript,
+                        'reason' => $status !== 0 ? 'git_pull_failed' : 'tools_not_found',
+                        'composer_found' => (bool)$composerCmd,
+                        'npm_found' => (bool)$npmCmd
+                    ]);
                     
-                    // Определяем владельца репозитория
-                    $repoOwner = @fileowner($projectPath);
-                    $ownerInfo = $repoOwner ? @posix_getpwuid($repoOwner) : null;
-                    $ownerUser = $ownerInfo['name'] ?? 'dsc23ytp';
-                    
-                    // Выполняем скрипт от имени владельца репозитория
+                    // Выполняем скрипт deploy.sh, который загружает PATH и NVM
                     $output = [];
-                    // Используем bash с переменными окружения для выполнения скрипта
                     $scriptEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' GIT_CONFIG_NOSYSTEM=1 ';
                     exec($scriptEnv . 'cd ' . $projectPath . ' && bash ' . escapeshellarg($deployScript) . ' 2>&1', $output, $status);
                     
@@ -303,21 +306,23 @@ class DeployController extends Controller
                         return response()->json([
                             'status' => 'Deployment successful (via deploy.sh)',
                             'method' => 'deploy.sh',
-                            'all_output' => $allOutput
+                            'all_output' => $allOutput,
+                            'script_output' => $output
                         ]);
                     } else {
                         Log::error('Deploy: deploy.sh failed', ['output' => $output, 'status' => $status]);
                         return response()->json([
                             'success' => false,
-                            'message' => 'Git pull failed and deploy.sh also failed',
-                            'error' => 'Git pull failed',
+                            'message' => 'deploy.sh failed',
+                            'error' => 'deploy.sh failed',
                             'output' => $output,
                             'status' => $status,
                             'all_output' => $allOutput,
                             'hint' => 'Проверьте права на выполнение скрипта deploy.sh: chmod +x deploy.sh'
                         ], 500);
                     }
-                } else {
+                } elseif ($status !== 0) {
+                    // Если git pull не работает и скрипта нет
                     Log::error('Deploy: Git pull failed', ['output' => $output, 'status' => $status]);
                     return response()->json([
                         'success' => false,

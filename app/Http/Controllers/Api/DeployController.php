@@ -42,13 +42,67 @@ class DeployController extends Controller
                 Log::warning('Deploy: NPM not found or error', ['output' => $output]);
             }
 
+            // Проверка наличия git репозитория
+            $gitDir = base_path() . '/.git';
+            if (!is_dir($gitDir)) {
+                Log::error('Deploy: Git repository not found', ['path' => base_path(), 'git_dir' => $gitDir]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Git репозиторий не найден',
+                    'error' => 'Git репозиторий не найден. Необходимо клонировать репозиторий на сервер или инициализировать git в директории проекта.',
+                    'path' => base_path(),
+                    'git_dir' => $gitDir,
+                    'hint' => 'Выполните на сервере: git clone <repository-url> . или git init && git remote add origin <repository-url>',
+                ], 500);
+            }
+
+            // Проверка, что это git репозиторий
+            $output = [];
+            exec('cd ' . base_path() . ' && git rev-parse --git-dir 2>&1', $output, $status);
+            if ($status !== 0) {
+                // Проверяем, не является ли это проблемой с правами доступа
+                $outputStr = implode(' ', $output);
+                if (strpos($outputStr, 'dubious ownership') !== false) {
+                    // Пытаемся добавить директорию в safe.directory
+                    $projectPath = base_path();
+                    exec('git config --global --add safe.directory ' . escapeshellarg($projectPath) . ' 2>&1', $safeOutput, $safeStatus);
+                    Log::info('Deploy: Added directory to safe.directory', ['path' => $projectPath, 'output' => $safeOutput]);
+                    
+                    // Повторяем проверку
+                    $output = [];
+                    exec('cd ' . base_path() . ' && git rev-parse --git-dir 2>&1', $output, $status);
+                }
+                
+                if ($status !== 0) {
+                    Log::error('Deploy: Not a git repository', ['output' => $output, 'status' => $status]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Git репозиторий не найден или не инициализирован',
+                        'error' => 'Git репозиторий не найден или не инициализирован',
+                        'output' => $output,
+                        'status' => $status,
+                    ], 500);
+                }
+            }
+
+            // Проверка наличия удаленного репозитория
+            $output = [];
+            exec('cd ' . base_path() . ' && git remote -v 2>&1', $output, $status);
+            $allOutput['git_remote_check'] = ['status' => $status, 'output' => $output];
+            if ($status !== 0 || empty($output)) {
+                Log::warning('Deploy: No remote repository configured', ['output' => $output]);
+            }
+
             // Обновление файлов из git
             $output = [];
-            exec('cd ' . base_path() . ' && git pull origin master 2>&1', $output, $status);
+            $projectPath = base_path();
+            exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' pull origin master 2>&1', $output, $status);
             $allOutput['git_pull'] = ['status' => $status, 'output' => $output];
             if ($status !== 0) {
                 Log::error('Deploy: Git pull failed', ['output' => $output, 'status' => $status]);
                 return response()->json([
+                    'success' => false,
+                    'message' => 'Git pull failed',
                     'error' => 'Git pull failed',
                     'output' => $output,
                     'status' => $status,

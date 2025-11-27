@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Http;
 
 class SetDeploy extends Command
 {
@@ -47,8 +48,53 @@ class SetDeploy extends Command
             $this->error(implode("\n", $output));
             return Command::FAILURE;
         }
+        $this->info('Отправка на Git выполнена успешно');
         
-        $this->info('Сборка и отправка на Git выполнены успешно');
+        // Отправка запроса на сервер для обновления проекта
+        $serverUrl = env('SERVER_URL');
+        if (!$serverUrl) {
+            $this->warn('SERVER_URL не указан в .env, пропускаем обновление на сервере');
+            return Command::SUCCESS;
+        }
+        
+        if (!$deploySecret) {
+            $this->warn('DEPLOY_SECRET не указан в .env, пропускаем обновление на сервере');
+            return Command::SUCCESS;
+        }
+        
+        $this->info('Отправка запроса на сервер для обновления проекта...');
+        try {
+            $response = Http::timeout(300) // 5 минут таймаут для деплоя
+                ->withHeaders([
+                    'Deploy-Secret' => $deploySecret,
+                    'Accept' => 'application/json',
+                ])
+                ->post(rtrim($serverUrl, '/') . '/api/deploy');
+            
+            if ($response->successful()) {
+                $this->info('Обновление на сервере выполнено успешно');
+                $responseData = $response->json();
+                if (isset($responseData['status'])) {
+                    $this->line('Статус: ' . $responseData['status']);
+                }
+            } else {
+                $this->error('Ошибка обновления на сервере');
+                $this->error('HTTP Status: ' . $response->status());
+                $errorData = $response->json();
+                if (isset($errorData['error'])) {
+                    $this->error('Ошибка: ' . $errorData['error']);
+                }
+                if (isset($errorData['output'])) {
+                    $this->error('Вывод: ' . implode("\n", (array)$errorData['output']));
+                }
+                return Command::FAILURE;
+            }
+        } catch (\Exception $e) {
+            $this->error('Исключение при отправке запроса на сервер: ' . $e->getMessage());
+            return Command::FAILURE;
+        }
+        
+        $this->info('Сборка, отправка на Git и обновление на сервере выполнены успешно');
         return Command::SUCCESS;
     }
 }

@@ -718,6 +718,7 @@ import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'Catalog',
@@ -1108,11 +1109,16 @@ export default {
                 selectedSubcategoryIds.value = [parseInt(route.query.subcategory_id)];
             }
             
-            document.title = 'Каталог товаров Essens — Интернет-магазин продукции для здоровья';
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'Каталог товаров Essens. Широкий ассортимент натуральной продукции для здоровья и красоты. Витамины, БАДы, косметика и многое другое.');
-            }
+            // SEO мета-теги
+            const baseUrl = getBaseUrl();
+            const catalogUrl = `${baseUrl}/catalog`;
+            setMetaTags({
+                title: 'Каталог товаров Essens — Интернет-магазин продукции для здоровья',
+                description: 'Каталог товаров Essens. Широкий ассортимент натуральной продукции для здоровья и красоты. Витамины, БАДы, косметика и многое другое.',
+                keywords: 'каталог товаров, Essens, здоровье, красота, витамины, БАДы, косметика, парфюмерия',
+                url: catalogUrl,
+                type: 'website',
+            });
         });
 
         return {

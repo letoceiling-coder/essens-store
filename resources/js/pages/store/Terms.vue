@@ -102,6 +102,7 @@
 <script>
 import { computed, onMounted } from 'vue';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'Terms',
@@ -118,11 +119,14 @@ export default {
         });
 
         onMounted(() => {
-            document.title = 'Пользовательское соглашение — Essens';
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'Пользовательское соглашение интернет-магазина Essens. Условия использования сайта и оформления заказов.');
-            }
+            const baseUrl = getBaseUrl();
+            setMetaTags({
+                title: 'Пользовательское соглашение — Essens',
+                description: 'Пользовательское соглашение интернет-магазина Essens. Условия использования сайта и оформления заказов.',
+                keywords: 'пользовательское соглашение, условия использования, Essens',
+                url: `${baseUrl}/terms`,
+                type: 'website',
+            });
         });
 
         return {

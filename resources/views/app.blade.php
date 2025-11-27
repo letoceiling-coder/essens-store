@@ -4,7 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'Laravel') }}</title>
+    <meta name="description" content="Essens — качественная натуральная продукция для здоровья и красоты. Широкий ассортимент товаров с гарантией качества. Доставка по всей России.">
+    <meta name="keywords" content="Essens, интернет-магазин, здоровье, красота, натуральная продукция, парфюмерия, косметика">
+    <meta name="author" content="Essens">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Russian">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Essens">
+    <meta property="og:locale" content="ru_RU">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    
+    <title>{{ config('app.name', 'Essens') }}</title>
+    
+    <!-- Structured Data (будет обновляться через JavaScript) -->
+    <script type="application/ld+json" id="base-organization-schema">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Essens",
+        "url": "{{ config('app.url', 'https://essens-store.ru') }}",
+        "description": "Интернет-магазин качественной натуральной продукции для здоровья и красоты"
+    }
+    </script>
+    
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script>
         // Применяем тему до загрузки страницы, чтобы избежать мигания

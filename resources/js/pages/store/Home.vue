@@ -159,6 +159,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, addStructuredData, generateOrganizationSchema, generateWebSiteSchema, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'Home',
@@ -195,17 +196,25 @@ export default {
         onMounted(() => {
             fetchFeaturedProducts();
             
-            // SEO мета-теги
-            document.title = 'Essens — Интернет-магазин продукции для здоровья и красоты';
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'Essens — качественная натуральная продукция для здоровья и красоты. Широкий ассортимент товаров с гарантией качества. Доставка по всей России.');
-            } else {
-                const meta = document.createElement('meta');
-                meta.name = 'description';
-                meta.content = 'Essens — качественная натуральная продукция для здоровья и красоты. Широкий ассортимент товаров с гарантией качества. Доставка по всей России.';
-                document.head.appendChild(meta);
-            }
+            // SEO мета-теги и микроразметка
+            const baseUrl = getBaseUrl();
+            const homeUrl = `${baseUrl}/`;
+
+            setMetaTags({
+                title: 'Essens — Интернет-магазин продукции для здоровья и красоты',
+                description: 'Essens — качественная натуральная продукция для здоровья и красоты. Широкий ассортимент товаров с гарантией качества. Доставка по всей России.',
+                keywords: 'Essens, интернет-магазин, здоровье, красота, натуральная продукция, парфюмерия, косметика',
+                url: homeUrl,
+                type: 'website',
+            });
+
+            // Структурированные данные для организации
+            const organizationSchema = generateOrganizationSchema(baseUrl);
+            addStructuredData(organizationSchema);
+
+            // Структурированные данные для веб-сайта
+            const webSiteSchema = generateWebSiteSchema(baseUrl);
+            addStructuredData(webSiteSchema);
         });
 
         return {

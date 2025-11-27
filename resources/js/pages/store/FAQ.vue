@@ -54,6 +54,7 @@
 <script>
 import { ref, onMounted } from 'vue';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, addStructuredData, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'FAQ',
@@ -102,11 +103,29 @@ export default {
         };
 
         onMounted(() => {
-            document.title = 'Часто задаваемые вопросы — Essens';
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'Часто задаваемые вопросы интернет-магазина Essens. Ответы на вопросы о заказе, доставке, оплате и возврате товаров.');
-            }
+            const baseUrl = getBaseUrl();
+            setMetaTags({
+                title: 'Часто задаваемые вопросы — Essens',
+                description: 'Ответы на часто задаваемые вопросы об интернет-магазине Essens. Информация о заказе, доставке, оплате, возврате товаров.',
+                keywords: 'FAQ, часто задаваемые вопросы, Essens, помощь, поддержка',
+                url: `${baseUrl}/faq`,
+                type: 'website',
+            });
+
+            // Структурированные данные для FAQ
+            const faqSchema = {
+                '@context': 'https://schema.org',
+                '@type': 'FAQPage',
+                mainEntity: faqs.map(faq => ({
+                    '@type': 'Question',
+                    name: faq.question,
+                    acceptedAnswer: {
+                        '@type': 'Answer',
+                        text: faq.answer,
+                    },
+                })),
+            };
+            addStructuredData(faqSchema);
         });
 
         return {

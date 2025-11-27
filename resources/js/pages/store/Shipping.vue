@@ -81,6 +81,7 @@
 <script>
 import { onMounted } from 'vue';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'Shipping',
@@ -89,11 +90,14 @@ export default {
     },
     setup() {
         onMounted(() => {
-            document.title = 'Доставка и оплата — Essens';
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'Информация о доставке и оплате в интернет-магазине Essens. Условия доставки, способы оплаты и возврата товара.');
-            }
+            const baseUrl = getBaseUrl();
+            setMetaTags({
+                title: 'Доставка и оплата — Essens',
+                description: 'Информация о доставке и оплате в интернет-магазине Essens. Способы доставки, сроки, стоимость. Варианты оплаты заказа.',
+                keywords: 'доставка, оплата, Essens, способы доставки, способы оплаты',
+                url: `${baseUrl}/shipping`,
+                type: 'website',
+            });
         });
     },
 };

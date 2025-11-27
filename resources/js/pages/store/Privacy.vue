@@ -94,6 +94,7 @@
 <script>
 import { computed, onMounted } from 'vue';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'Privacy',
@@ -110,11 +111,14 @@ export default {
         });
 
         onMounted(() => {
-            document.title = 'Политика конфиденциальности — Essens';
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'Политика конфиденциальности интернет-магазина Essens. Информация о сборе, использовании и защите персональных данных.');
-            }
+            const baseUrl = getBaseUrl();
+            setMetaTags({
+                title: 'Политика конфиденциальности — Essens',
+                description: 'Политика конфиденциальности интернет-магазина Essens. Информация о сборе, использовании и защите персональных данных.',
+                keywords: 'политика конфиденциальности, защита данных, Essens',
+                url: `${baseUrl}/privacy`,
+                type: 'website',
+            });
         });
 
         return {

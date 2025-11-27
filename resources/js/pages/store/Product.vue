@@ -279,6 +279,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, addStructuredData, generateProductSchema, generateBreadcrumbSchema, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'Product',
@@ -318,12 +319,48 @@ export default {
                     selectedVariant.value = product.value.variants[0];
                 }
 
-                // SEO мета-теги
-                document.title = `${product.value.name} — Essens`;
-                const metaDescription = document.querySelector('meta[name="description"]');
-                if (metaDescription) {
-                    metaDescription.setAttribute('content', product.value.description || `Купить ${product.value.name} в интернет-магазине Essens. Качественная продукция для здоровья и красоты.`);
+                // SEO мета-теги и микроразметка
+                const baseUrl = getBaseUrl();
+                const productUrl = `${baseUrl}/product/${product.value.slug || product.value.id}`;
+                const productImage = product.value.primary_image?.url || product.value.images?.[0]?.url || '';
+                const fullImageUrl = productImage.startsWith('http') ? productImage : `${baseUrl}${productImage}`;
+                const description = product.value.description 
+                    ? product.value.description.substring(0, 160) 
+                    : `Купить ${product.value.name} в интернет-магазине Essens. Качественная продукция для здоровья и красоты.`;
+
+                setMetaTags({
+                    title: `${product.value.name} — Essens`,
+                    description: description,
+                    keywords: `${product.value.name}, ${product.value.type || ''}, ${product.value.subcategory?.category?.name || ''}, Essens, купить`,
+                    image: fullImageUrl,
+                    url: productUrl,
+                    type: 'product',
+                });
+
+                // Структурированные данные для товара
+                const productSchema = generateProductSchema(product.value, baseUrl);
+                addStructuredData(productSchema);
+
+                // Структурированные данные для хлебных крошек
+                const breadcrumbItems = [
+                    { name: 'Главная', url: '/' },
+                    { name: 'Каталог', url: '/catalog' },
+                ];
+                if (product.value.subcategory?.category) {
+                    breadcrumbItems.push({
+                        name: product.value.subcategory.category.name,
+                        url: `/catalog?category_id=${product.value.subcategory.category.id}`,
+                    });
                 }
+                if (product.value.subcategory) {
+                    breadcrumbItems.push({
+                        name: product.value.subcategory.name,
+                        url: `/catalog?subcategory_id=${product.value.subcategory.id}`,
+                    });
+                }
+                breadcrumbItems.push({ name: product.value.name });
+                const breadcrumbSchema = generateBreadcrumbSchema(breadcrumbItems, baseUrl);
+                addStructuredData(breadcrumbSchema);
             } catch (error) {
                 console.error('Error fetching product:', error);
                 if (error.response?.status === 404) {

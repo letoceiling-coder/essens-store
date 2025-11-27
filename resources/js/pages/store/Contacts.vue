@@ -97,6 +97,7 @@
 <script>
 import { ref, onMounted } from 'vue';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, addStructuredData, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'Contacts',
@@ -121,11 +122,14 @@ export default {
         };
 
         onMounted(() => {
-            document.title = 'Контакты Essens — Свяжитесь с нами';
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'Свяжитесь с Essens. Наши контакты, адрес, телефон и форма обратной связи. Мы всегда готовы помочь вам.');
-            }
+            const baseUrl = getBaseUrl();
+            setMetaTags({
+                title: 'Контакты Essens — Свяжитесь с нами',
+                description: 'Свяжитесь с интернет-магазином Essens. Телефон, email, адрес. Мы всегда готовы ответить на ваши вопросы.',
+                keywords: 'контакты Essens, связь, поддержка, телефон, email',
+                url: `${baseUrl}/contacts`,
+                type: 'website',
+            });
         });
 
         return {

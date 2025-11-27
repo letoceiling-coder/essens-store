@@ -86,6 +86,7 @@
 <script>
 import { onMounted } from 'vue';
 import StoreLayout from '@/layouts/StoreLayout.vue';
+import { setMetaTags, getBaseUrl } from '@/utils/seo';
 
 export default {
     name: 'About',
@@ -94,11 +95,14 @@ export default {
     },
     setup() {
         onMounted(() => {
-            document.title = 'О компании Essens — Интернет-магазин продукции для здоровья';
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'О компании Essens. Узнайте больше о нашей миссии, ценностях и принципах работы. Мы предлагаем качественную продукцию для здоровья и красоты.');
-            }
+            const baseUrl = getBaseUrl();
+            setMetaTags({
+                title: 'О компании Essens — Интернет-магазин продукции для здоровья',
+                description: 'О компании Essens. Узнайте больше о нашей миссии, ценностях и принципах работы. Мы предлагаем качественную продукцию для здоровья и красоты.',
+                keywords: 'О компании Essens, миссия, ценности, качественная продукция',
+                url: `${baseUrl}/about`,
+                type: 'website',
+            });
         });
     },
 };

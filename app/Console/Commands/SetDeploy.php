@@ -104,13 +104,42 @@ class SetDeploy extends Command
             $this->line('URL: ' . $deployUrl);
             $this->line('Используется секретный ключ: ' . (strlen($deploySecret) > 0 ? substr($deploySecret, 0, 4) . '...' : 'не указан'));
             
-            $response = Http::withoutVerifying() // Отключаем проверку SSL сертификата
-                ->timeout(300) // 5 минут таймаут для деплоя
-                ->withHeaders([
-                    'Deploy-Secret' => $deploySecret,
-                    'Accept' => 'application/json',
-                ])
-                ->post($deployUrl);
+            // Пробуем несколько вариантов URL, если первый не работает
+            $urlsToTry = [$deployUrl];
+            
+            // Если URL содержит домен без пути, пробуем добавить /public
+            if (preg_match('/^https?:\/\/[^\/]+$/', $serverUrl)) {
+                $urlsToTry[] = rtrim($serverUrl, '/') . '/public/api/deploy';
+            }
+            
+            $response = null;
+            $lastError = null;
+            
+            foreach ($urlsToTry as $url) {
+                $this->line('Пробуем URL: ' . $url);
+                try {
+                    $response = Http::withoutVerifying() // Отключаем проверку SSL сертификата
+                        ->timeout(300) // 5 минут таймаут для деплоя
+                        ->withHeaders([
+                            'Deploy-Secret' => $deploySecret,
+                            'Accept' => 'application/json',
+                        ])
+                        ->post($url);
+                    
+                    // Если получили ответ (даже с ошибкой), значит URL правильный
+                    if ($response->status() !== 404) {
+                        break;
+                    }
+                } catch (\Exception $e) {
+                    $lastError = $e->getMessage();
+                    $this->line('Ошибка при попытке подключения к ' . $url . ': ' . $e->getMessage());
+                    continue;
+                }
+            }
+            
+            if (!$response) {
+                throw new \Exception('Не удалось подключиться ни к одному из URL. Последняя ошибка: ' . ($lastError ?? 'неизвестная ошибка'));
+            }
             
             if ($response->successful()) {
                 $this->info('Обновление на сервере выполнено успешно');

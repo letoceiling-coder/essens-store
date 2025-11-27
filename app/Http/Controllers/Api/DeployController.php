@@ -70,71 +70,95 @@ class DeployController extends Controller
             $status = 0;
 
             // Проверка версии composer и npm
+            // Определяем домашнюю директорию пользователя dsc23ytp (владельца проекта)
+            $projectOwner = @fileowner($projectPath);
+            $ownerInfo = $projectOwner ? @posix_getpwuid($projectOwner) : null;
+            $userHome = $ownerInfo['dir'] ?? '/home/d/dsc23ytp';
+            
+            // Также пробуем другие возможные пути
+            $possibleHomes = array_unique(array_filter([
+                $userHome,
+                '/home/d/dsc23ytp',
+                $_SERVER['HOME'] ?? null,
+                getenv('HOME') ?: null,
+            ]));
+            
             // Пробуем найти composer в разных местах
-            $composerPaths = [
-                'composer',  // В PATH
-                '~/bin/composer',  // В домашней директории
-                '/home/d/dsc23ytp/bin/composer',  // Полный путь
-            ];
+            $composerPaths = ['composer'];  // Сначала пробуем в PATH
+            foreach ($possibleHomes as $home) {
+                $composerPath = $home . '/bin/composer';
+                if (file_exists($composerPath) && is_executable($composerPath)) {
+                    $composerPaths[] = $composerPath;
+                }
+            }
+            // Явный путь (проверяем существование)
+            if (file_exists('/home/d/dsc23ytp/bin/composer')) {
+                $composerPaths[] = '/home/d/dsc23ytp/bin/composer';
+            }
             
             $composerCmd = null;
             foreach ($composerPaths as $path) {
-                $expandedPath = str_replace('~', $_SERVER['HOME'] ?? '/home/d/dsc23ytp', $path);
                 $output = [];
-                exec($expandedPath . ' --version 2>&1', $output, $status);
-                if ($status === 0 && !empty($output)) {
-                    $composerCmd = $expandedPath;
-                    $allOutput['composer_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'path' => $expandedPath];
-                    Log::info('Deploy: Composer found', ['path' => $expandedPath, 'version' => $output[0] ?? null]);
+                exec($path . ' --version 2>&1', $output, $status);
+                if ($status === 0 && !empty($output) && strpos(implode(' ', $output), 'Composer') !== false) {
+                    $composerCmd = $path;
+                    $allOutput['composer_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'path' => $path];
+                    Log::info('Deploy: Composer found', ['path' => $path, 'version' => $output[0] ?? null]);
                     break;
                 }
             }
             
             if (!$composerCmd) {
-                Log::warning('Deploy: Composer not found', ['checked_paths' => $composerPaths]);
+                Log::warning('Deploy: Composer not found', ['checked_paths' => $composerPaths, 'user_home' => $userHome]);
                 $allOutput['composer_check'] = ['status' => 'not_found', 'output' => ['Composer not found in any checked path']];
             }
 
             // Пробуем найти npm в разных местах
-            $npmPaths = [
-                'npm',  // В PATH
-                '~/nodejs/bin/npm',  // Прямая установка
-                '/home/d/dsc23ytp/nodejs/bin/npm',  // Полный путь
-            ];
+            $npmPaths = ['npm'];  // Сначала пробуем в PATH
             
-            // Также пробуем через NVM
-            $nvmDir = $_SERVER['HOME'] ?? '/home/d/dsc23ytp';
-            $nvmPath = $nvmDir . '/.nvm/nvm.sh';
-            
+            // Пробуем через NVM в разных домашних директориях
             $npmCmd = null;
-            // Сначала пробуем через NVM
-            if (file_exists($nvmPath)) {
-                $output = [];
-                exec('bash -c "source ' . escapeshellarg($nvmPath) . ' && npm --version" 2>&1', $output, $status);
-                if ($status === 0 && !empty($output)) {
-                    $npmCmd = 'bash -c "source ' . escapeshellarg($nvmPath) . ' && npm"';
-                    $allOutput['npm_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'method' => 'nvm'];
-                    Log::info('Deploy: NPM found via NVM', ['version' => $output[0] ?? null]);
+            foreach ($possibleHomes as $home) {
+                $nvmPath = $home . '/.nvm/nvm.sh';
+                if (file_exists($nvmPath)) {
+                    $output = [];
+                    exec('bash -c "source ' . escapeshellarg($nvmPath) . ' && npm --version" 2>&1', $output, $status);
+                    if ($status === 0 && !empty($output) && is_numeric($output[0][0] ?? '')) {
+                        $npmCmd = 'bash -c "source ' . escapeshellarg($nvmPath) . ' && npm"';
+                        $allOutput['npm_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'method' => 'nvm', 'nvm_path' => $nvmPath];
+                        Log::info('Deploy: NPM found via NVM', ['version' => $output[0] ?? null, 'nvm_path' => $nvmPath]);
+                        break;
+                    }
                 }
             }
             
             // Если NVM не сработал, пробуем прямые пути
             if (!$npmCmd) {
+                foreach ($possibleHomes as $home) {
+                    $npmPath = $home . '/nodejs/bin/npm';
+                    if (file_exists($npmPath)) {
+                        $npmPaths[] = $npmPath;
+                    }
+                }
+                // Явный путь
+                if (file_exists('/home/d/dsc23ytp/nodejs/bin/npm')) {
+                    $npmPaths[] = '/home/d/dsc23ytp/nodejs/bin/npm';
+                }
+                
                 foreach ($npmPaths as $path) {
-                    $expandedPath = str_replace('~', $_SERVER['HOME'] ?? '/home/d/dsc23ytp', $path);
                     $output = [];
-                    exec($expandedPath . ' --version 2>&1', $output, $status);
-                    if ($status === 0 && !empty($output)) {
-                        $npmCmd = $expandedPath;
-                        $allOutput['npm_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'path' => $expandedPath];
-                        Log::info('Deploy: NPM found', ['path' => $expandedPath, 'version' => $output[0] ?? null]);
+                    exec($path . ' --version 2>&1', $output, $status);
+                    if ($status === 0 && !empty($output) && is_numeric($output[0][0] ?? '')) {
+                        $npmCmd = $path;
+                        $allOutput['npm_check'] = ['version' => $output[0] ?? null, 'status' => $status, 'path' => $path];
+                        Log::info('Deploy: NPM found', ['path' => $path, 'version' => $output[0] ?? null]);
                         break;
                     }
                 }
             }
             
             if (!$npmCmd) {
-                Log::warning('Deploy: NPM not found', ['checked_paths' => $npmPaths]);
+                Log::warning('Deploy: NPM not found', ['checked_paths' => $npmPaths, 'user_home' => $userHome]);
                 $allOutput['npm_check'] = ['status' => 'not_found', 'output' => ['NPM not found in any checked path']];
             }
 

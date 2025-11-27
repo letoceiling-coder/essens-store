@@ -4,6 +4,13 @@
 
 cd /home/d/dsc23ytp/essens/public_html || exit 1
 
+# Загружаем PATH для доступа к composer и npm
+export PATH="$HOME/bin:$PATH"
+
+# Загружаем NVM для доступа к node и npm
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
 # Используем переменную окружения для обхода проблемы с правами
 export GIT_SAFE_DIRECTORY=/home/d/dsc23ytp/essens/public_html
 export GIT_CONFIG_NOSYSTEM=1
@@ -11,9 +18,17 @@ export GIT_CONFIG_NOSYSTEM=1
 # Убеждаемся, что локальный git config настроен
 git config --local safe.directory /home/d/dsc23ytp/essens/public_html 2>/dev/null
 
-# Добавляем deploy.sh в gitignore, если его там нет (чтобы избежать конфликтов)
+# Добавляем deploy.sh и install-tools.sh в gitignore, если их там нет (чтобы избежать конфликтов)
 if ! grep -q "^deploy.sh$" .gitignore 2>/dev/null; then
     echo "deploy.sh" >> .gitignore
+fi
+if ! grep -q "^install-tools.sh$" .gitignore 2>/dev/null; then
+    echo "install-tools.sh" >> .gitignore
+fi
+
+# Удаляем install-tools.sh, если он мешает обновлению
+if [ -f "install-tools.sh" ]; then
+    rm -f install-tools.sh
 fi
 
 # Получаем последние изменения из удаленного репозитория

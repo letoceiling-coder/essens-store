@@ -109,9 +109,22 @@ class AdminMenu
             ],
             [
                 'title' => 'Парсинг',
-                'route' => 'admin.parsing',
                 'icon' => 'download',
                 'roles' => ['admin', 'manager'],
+                'children' => [
+                    [
+                        'title' => 'Парсинг товаров',
+                        'route' => 'admin.parsing',
+                        'icon' => 'package',
+                        'roles' => ['admin', 'manager'],
+                    ],
+                    [
+                        'title' => 'Парсинг категорий',
+                        'route' => 'admin.category-parsing',
+                        'icon' => 'folder',
+                        'roles' => ['admin', 'manager'],
+                    ],
+                ],
             ],
             [
                 'title' => 'Telegram Bot',

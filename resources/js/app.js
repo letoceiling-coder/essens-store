@@ -318,6 +318,11 @@ const routes = [
                 component: () => import('./pages/admin/Parsing.vue'),
             },
             {
+                path: 'category-parsing',
+                name: 'admin.category-parsing',
+                component: () => import('./pages/admin/CategoryParsing.vue'),
+            },
+            {
                 path: 'telegram-bot',
                 name: 'admin.telegram-bot',
                 component: () => import('./pages/admin/TelegramBot.vue'),

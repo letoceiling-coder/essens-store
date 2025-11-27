@@ -582,11 +582,11 @@
                                                 'font-bold text-primary',
                                                 gridColumns === 4 ? 'text-lg' : gridColumns === 5 ? 'text-base' : 'text-xl'
                                             ]">{{ formatPrice(getProductPrice(product)) }}</span>
-                                            <span v-if="product.promotions?.length > 0" :class="[
+                                            <span v-if="(product.recommended_price && product.old_price) || product.promotions?.length > 0" :class="[
                                                 'text-muted-foreground line-through',
                                                 gridColumns === 4 ? 'ml-1.5 text-xs' : gridColumns === 5 ? 'ml-1 text-[10px]' : 'ml-2 text-sm'
                                             ]">
-                                                {{ formatPrice(product.price) }}
+                                                {{ formatPrice(product.old_price || product.price) }}
                                             </span>
                                         </div>
                                     </div>
@@ -926,9 +926,8 @@ export default {
         };
 
         const getProductPrice = (product) => {
-            // Если есть активные промо-акции, можно вернуть цену со скидкой
-            // Пока возвращаем обычную цену
-            return product.price;
+            // Используем recommended_price, если оно есть, иначе обычную цену
+            return product.recommended_price || product.price || 0;
         };
 
         const addToCart = (product) => {

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Subcategory extends Model
 {
     protected $fillable = [
+        'external_id',
         'category_id',
         'name',
         'slug',

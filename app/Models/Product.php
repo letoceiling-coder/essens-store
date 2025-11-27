@@ -17,6 +17,9 @@ class Product extends Model
         'gender_target',
         'volume',
         'price',
+        'old_price',
+        'discounted_price',
+        'recommended_price',
         'currency',
         'in_stock',
         'stock_qty',
@@ -26,6 +29,9 @@ class Product extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'old_price' => 'decimal:2',
+        'discounted_price' => 'decimal:2',
+        'recommended_price' => 'decimal:2',
         'in_stock' => 'boolean',
         'stock_qty' => 'integer',
         'tags' => 'array',

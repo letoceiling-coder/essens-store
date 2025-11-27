@@ -94,6 +94,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/categories', [ParsingController::class, 'getCategories']);
             Route::post('/category-products', [ParsingController::class, 'getProductsFromCategory']);
             Route::post('/product', [ParsingController::class, 'parseProduct']);
+            // Eshop parsing routes
+            Route::get('/eshop/categories', [ParsingController::class, 'getEshopCategories']);
+            Route::post('/eshop/category-products', [ParsingController::class, 'getProductsFromEshopCategory']);
+            Route::post('/eshop/parse-and-save-products', [ParsingController::class, 'parseAndSaveProducts']);
+            Route::get('/eshop/debug-html', [ParsingController::class, 'getEshopPageHtml']); // Для отладки
         });
 
         // Product Parsing Queue routes

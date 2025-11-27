@@ -115,7 +115,7 @@
                                 {{ product.description }}
                             </p>
                             <div class="flex items-center justify-between">
-                                <span class="text-xl font-bold text-primary">{{ formatPrice(product.price) }}</span>
+                                <span class="text-xl font-bold text-primary">{{ formatPrice(product.recommended_price || product.price) }}</span>
                                 <button
                                     @click.stop
                                     class="px-4 py-2 bg-primary text-primary-contrast rounded-lg hover:opacity-90 transition-opacity text-sm"

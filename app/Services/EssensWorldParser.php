@@ -826,35 +826,60 @@ class EssensWorldParser
         }
 
         // Парсинг цен (для essensworld.ru)
-        // Ищем цену со скидкой (discounted-price) - это основная цена
-        $discountedPriceNode = $xpath->query("//div[contains(@class, 'price-wrap')]//div[contains(@class, 'discounted-price')]")->item(0);
-        if ($discountedPriceNode) {
-            $priceText = trim($discountedPriceNode->textContent);
-            $price = $this->extractPrice($priceText);
-            if ($price && $price > 0) {
-                $product['discounted_price'] = $price;
-                $product['price'] = $price; // Основная цена = цена со скидкой
-            }
-        }
+        // Ищем блок price-wrap
+        $priceWrap = $xpath->query("//div[contains(@class, 'price-wrap')]")->item(0);
         
-        // Старая цена (цена до скидки)
-        $oldPriceNode = $xpath->query("//div[contains(@class, 'price-wrap')]//div[contains(@class, 'price') and contains(@class, 'discount')]")->item(0);
-        if ($oldPriceNode) {
-            $priceText = trim($oldPriceNode->textContent);
-            $price = $this->extractPrice($priceText);
-            if ($price && $price > 0) {
-                $product['old_price'] = $price;
-            }
-        }
-        
-        // Если не нашли цену со скидкой, ищем обычную цену
-        if (!$product['price']) {
-            $regularPriceNode = $xpath->query("//div[contains(@class, 'price-wrap')]//div[contains(@class, 'price') and not(contains(@class, 'discount'))]")->item(0);
-            if ($regularPriceNode) {
-                $priceText = trim($regularPriceNode->textContent);
+        if ($priceWrap) {
+            // Ищем цену со скидкой (discounted-price) - это новая цена
+            $discountedPriceNode = $xpath->query(".//div[contains(@class, 'discounted-price')]", $priceWrap)->item(0);
+            if ($discountedPriceNode) {
+                $priceText = trim($discountedPriceNode->textContent);
                 $price = $this->extractPrice($priceText);
                 if ($price && $price > 0) {
+                    $product['discounted_price'] = $price;
+                    $product['price'] = $price; // Основная цена = цена со скидкой
+                }
+            }
+            
+            // Старая цена (цена до скидки) - в div с классами price и discount
+            $oldPriceNode = $xpath->query(".//div[contains(@class, 'price') and contains(@class, 'discount')]", $priceWrap)->item(0);
+            if ($oldPriceNode) {
+                $priceText = trim($oldPriceNode->textContent);
+                $price = $this->extractPrice($priceText);
+                if ($price && $price > 0) {
+                    $product['old_price'] = $price;
+                }
+            }
+            
+            // Если не нашли цену со скидкой, ищем обычную цену (без класса discount)
+            if (!$product['price']) {
+                $regularPriceNode = $xpath->query(".//div[contains(@class, 'price') and not(contains(@class, 'discount'))]", $priceWrap)->item(0);
+                if ($regularPriceNode) {
+                    $priceText = trim($regularPriceNode->textContent);
+                    $price = $this->extractPrice($priceText);
+                    if ($price && $price > 0) {
+                        $product['price'] = $price;
+                    }
+                }
+            }
+        } else {
+            // Fallback: ищем цены без price-wrap
+            $discountedPriceNode = $xpath->query("//div[contains(@class, 'discounted-price')]")->item(0);
+            if ($discountedPriceNode) {
+                $priceText = trim($discountedPriceNode->textContent);
+                $price = $this->extractPrice($priceText);
+                if ($price && $price > 0) {
+                    $product['discounted_price'] = $price;
                     $product['price'] = $price;
+                }
+            }
+            
+            $oldPriceNode = $xpath->query("//div[contains(@class, 'price') and contains(@class, 'discount')]")->item(0);
+            if ($oldPriceNode) {
+                $priceText = trim($oldPriceNode->textContent);
+                $price = $this->extractPrice($priceText);
+                if ($price && $price > 0) {
+                    $product['old_price'] = $price;
                 }
             }
         }
@@ -874,13 +899,26 @@ class EssensWorldParser
             }
         }
         
-        // Рекомендуемая розничная цена
-        $recommendedPriceNode = $xpath->query("//div[contains(@class, 'recommended-price-wrap')]//div[contains(@class, 'recommended-price')]")->item(0);
-        if ($recommendedPriceNode) {
-            $priceText = trim($recommendedPriceNode->textContent);
-            $price = $this->extractPrice($priceText);
-            if ($price && $price > 0) {
-                $product['recommended_price'] = $price;
+        // Рекомендуемая розничная цена (из блока recommended-price-wrap или details-section-wrap)
+        $recommendedPriceWrap = $xpath->query("//div[contains(@class, 'recommended-price-wrap')] | //div[contains(@class, 'details-section-wrap')]//div[contains(@class, 'recommended-price-wrap')]")->item(0);
+        if ($recommendedPriceWrap) {
+            $recommendedPriceNode = $xpath->query(".//div[contains(@class, 'recommended-price')]", $recommendedPriceWrap)->item(0);
+            if ($recommendedPriceNode) {
+                $priceText = trim($recommendedPriceNode->textContent);
+                $price = $this->extractPrice($priceText);
+                if ($price && $price > 0) {
+                    $product['recommended_price'] = $price;
+                }
+            }
+        } else {
+            // Fallback: ищем без обертки
+            $recommendedPriceNode = $xpath->query("//div[contains(@class, 'recommended-price')]")->item(0);
+            if ($recommendedPriceNode) {
+                $priceText = trim($recommendedPriceNode->textContent);
+                $price = $this->extractPrice($priceText);
+                if ($price && $price > 0) {
+                    $product['recommended_price'] = $price;
+                }
             }
         }
         
@@ -921,11 +959,19 @@ class EssensWorldParser
             "//img[contains(@class, 'product-image') or contains(@class, 'product-photo')]",
             "//div[contains(@class, 'product-image')]//img",
             "//img[@itemprop='image']",
+            "//img[contains(@src, '/images/goods/')]", // Более общий селектор
         ];
         
+        $foundImages = [];
         foreach ($imageSelectors as $selector) {
             $imageNodes = $xpath->query($selector);
             if ($imageNodes->length > 0) {
+                Log::info("Found images with selector", [
+                    'selector' => $selector,
+                    'count' => $imageNodes->length,
+                    'url' => $productUrl,
+                ]);
+                
                 foreach ($imageNodes as $img) {
                     $src = $img->getAttribute('src') ?: $img->getAttribute('data-src') ?: $img->getAttribute('data-lazy-src');
                     if ($src) {
@@ -933,19 +979,30 @@ class EssensWorldParser
                         if (stripos($src, 'logo') !== false || 
                             stripos($src, 'icon') !== false || 
                             stripos($src, 'thumb') !== false ||
-                            stripos($src, '/r/200/') !== false) continue;
+                            stripos($src, '/r/200/') !== false ||
+                            stripos($src, 'coupon') !== false) {
+                            continue;
+                        }
                         
                         // Преобразуем относительные URL в абсолютные
                         if (str_starts_with($src, '//')) {
                             $fullSrc = 'https:' . $src;
                         } elseif (str_starts_with($src, 'http')) {
                             $fullSrc = $src;
+                        } elseif (str_starts_with($src, '/static.')) {
+                            // Обработка путей вида /static.essensworld.com/...
+                            $fullSrc = 'https://www' . $src;
                         } else {
-                            $fullSrc = $this->baseUrl . $src;
+                            $fullSrc = $this->baseUrl . '/' . ltrim($src, '/');
                         }
                         
-                        if (!in_array($fullSrc, $product['images'])) {
+                        if (!in_array($fullSrc, $product['images']) && !in_array($fullSrc, $foundImages)) {
                             $product['images'][] = $fullSrc;
+                            $foundImages[] = $fullSrc;
+                            Log::info("Added product image", [
+                                'url' => $productUrl,
+                                'image_url' => $fullSrc,
+                            ]);
                         }
                     }
                 }
@@ -956,20 +1013,40 @@ class EssensWorldParser
         // Также ищем изображения в ссылках галереи
         if (count($product['images']) == 0) {
             $galleryLinks = $xpath->query("//a[contains(@class, 'detail-photo')]/@href");
+            Log::info("Searching in gallery links", [
+                'count' => $galleryLinks->length,
+                'url' => $productUrl,
+            ]);
+            
             foreach ($galleryLinks as $link) {
                 $href = $link->nodeValue;
-                if ($href && stripos($href, 'static.essensworld.com/images/goods') !== false) {
+                if ($href && (stripos($href, 'static.essensworld.com/images/goods') !== false || stripos($href, '/images/goods/') !== false)) {
                     if (str_starts_with($href, '//')) {
                         $fullSrc = 'https:' . $href;
-                    } else {
+                    } elseif (str_starts_with($href, 'http')) {
                         $fullSrc = $href;
+                    } elseif (str_starts_with($href, '/static.')) {
+                        $fullSrc = 'https://www' . $href;
+                    } else {
+                        $fullSrc = $this->baseUrl . '/' . ltrim($href, '/');
                     }
-                    if (!in_array($fullSrc, $product['images'])) {
+                    if (!in_array($fullSrc, $product['images']) && !in_array($fullSrc, $foundImages)) {
                         $product['images'][] = $fullSrc;
+                        $foundImages[] = $fullSrc;
+                        Log::info("Added product image from gallery link", [
+                            'url' => $productUrl,
+                            'image_url' => $fullSrc,
+                        ]);
                     }
                 }
             }
         }
+        
+        Log::info("Product images parsing result", [
+            'url' => $productUrl,
+            'images_count' => count($product['images']),
+            'images' => array_slice($product['images'], 0, 3), // Логируем первые 3 для отладки
+        ]);
 
         // Парсинг артикула/SKU (для essensworld.ru)
         $skuSelectors = [
@@ -1165,6 +1242,902 @@ class EssensWorldParser
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Получить категории с eshop.php
+     */
+    public function getEshopCategories(): array
+    {
+        // Убеждаемся, что авторизованы
+        if (!$this->isAuthenticated) {
+            if (!$this->authenticate()) {
+                Log::error("Failed to authenticate before fetching eshop categories");
+                return [];
+            }
+        }
+
+        // Пробуем несколько вариантов URL
+        $urlsToTry = [
+            $this->baseUrl . '/eshop/',
+            $this->baseUrl . '/eshop.php',
+            $this->baseUrl . '/eshop.php?cat_id=0',
+            $this->baseUrl, // Главная страница
+        ];
+
+        $html = null;
+        $usedUrl = null;
+        
+        foreach ($urlsToTry as $url) {
+            $html = $this->fetchPage($url);
+            if ($html) {
+                $usedUrl = $url;
+                Log::info("Successfully fetched page for eshop categories", ['url' => $url, 'html_length' => strlen($html)]);
+                break;
+            }
+        }
+
+        if (!$html) {
+            Log::warning("Failed to fetch any page for eshop categories", ['tried_urls' => $urlsToTry]);
+            return [];
+        }
+
+        $xpath = $this->parseHtml($html);
+        if (!$xpath) {
+            Log::warning("Failed to parse HTML for eshop categories");
+            return [];
+        }
+
+        $categories = [];
+
+        // Сначала ищем в accordian элементе (как в getCategories)
+        $accordianNode = $xpath->query("//*[@id='accordian'] | //*[@id='accordion']")->item(0);
+        
+        if ($accordianNode) {
+            Log::info("Found accordian element, extracting eshop categories with subcategories");
+            
+            // Находим контейнер panel panel-default (все категории находятся в одной панели)
+            $panelContainer = $xpath->query(".//div[contains(@class, 'panel') and contains(@class, 'panel-default')]", $accordianNode)->item(0);
+            
+            if (!$panelContainer) {
+                // Если не нашли panel-default, используем сам accordian
+                $panelContainer = $accordianNode;
+            }
+            
+            // Находим все panel-heading (категории) внутри контейнера
+            $panelHeadings = $xpath->query(".//div[contains(@class, 'panel-heading') and contains(@class, 'new-menu-heading')]", $panelContainer);
+            
+            $foundCatIds = [];
+            $categories = [];
+            
+            foreach ($panelHeadings as $index => $panelHeading) {
+                // Ищем ссылку категории в panel-title
+                $categoryLink = $xpath->query(".//span[contains(@class, 'panel-title')]//a[@href] | .//a[@href and contains(@class, 'new-menu-collapse')]", $panelHeading)->item(0);
+                
+                if (!$categoryLink) {
+                    continue;
+                }
+                
+                $mainHref = $categoryLink->getAttribute('href');
+                $mainName = trim($categoryLink->textContent);
+                
+                // Очищаем название от HTML тегов (например, NEW флаги)
+                $mainName = preg_replace('/<[^>]+>.*?<\/[^>]+>/', '', $mainName);
+                $mainName = trim($mainName);
+                
+                if (!$mainName || strlen($mainName) < 2) {
+                    continue;
+                }
+                
+                // Пропускаем служебные ссылки
+                if (stripos($mainHref, 'login') !== false || 
+                    stripos($mainHref, 'register') !== false ||
+                    stripos($mainHref, 'cart') !== false ||
+                    stripos($mainHref, 'javascript:') !== false ||
+                    $mainHref === '#' || 
+                    (str_starts_with($mainHref, '#') && $mainHref !== '#eshop_products')) {
+                    continue;
+                }
+                
+                // Формируем полный URL
+                if (str_starts_with($mainHref, 'http')) {
+                    $mainFullUrl = $mainHref;
+                } else {
+                    $mainFullUrl = $this->baseUrl . '/' . ltrim($mainHref, '/');
+                }
+                
+                // Пропускаем товары
+                if (preg_match('/-d\d+\//', $mainFullUrl)) {
+                    continue;
+                }
+                
+                // Извлекаем cat_id основной категории
+                $mainCatId = null;
+                if (preg_match('/-c(\d+)(?:\/|#|$)/', $mainFullUrl, $matches)) {
+                    $mainCatId = (int)$matches[1];
+                } elseif (preg_match('/cat_id[=:](\d+)/', $mainHref, $matches)) {
+                    $mainCatId = (int)$matches[1];
+                }
+                
+                if (!$mainCatId || $mainCatId <= 0) {
+                    continue;
+                }
+                
+                // Ищем подкатегории в следующем panel-collapse после этого panel-heading
+                $subcategories = [];
+                
+                // Ищем data-target в panel-heading для определения ID panel-collapse
+                $dataTarget = $xpath->query(".//a[@data-toggle='collapse']/@data-target", $panelHeading)->item(0);
+                $collapseClass = null;
+                if ($dataTarget) {
+                    $targetValue = $dataTarget->nodeValue;
+                    // Извлекаем класс из data-target (например, ".s19" -> "s19")
+                    if (preg_match('/\.(s\d+)/', $targetValue, $matches)) {
+                        $collapseClass = $matches[1];
+                    }
+                }
+                
+                // Ищем panel-collapse следующий за этим panel-heading
+                $panelCollapse = null;
+                if ($collapseClass) {
+                    // Ищем по классу
+                    $panelCollapse = $xpath->query(".//div[contains(@class, 'panel-collapse') and contains(@class, '{$collapseClass}')]", $panelContainer)->item(0);
+                } else {
+                    // Ищем следующий элемент после panel-heading
+                    $nextSibling = $panelHeading->nextSibling;
+                    while ($nextSibling) {
+                        if ($nextSibling->nodeType === XML_ELEMENT_NODE && 
+                            $nextSibling->getAttribute('class') && 
+                            strpos($nextSibling->getAttribute('class'), 'panel-collapse') !== false) {
+                            $panelCollapse = $nextSibling;
+                            break;
+                        }
+                        $nextSibling = $nextSibling->nextSibling;
+                    }
+                }
+                
+                // Если нашли panel-collapse, извлекаем подкатегории
+                if ($panelCollapse) {
+                    $subcategoryLinks = $xpath->query(".//div[contains(@class, 'panel-body')]//ul//li//a[@href]", $panelCollapse);
+                    
+                    foreach ($subcategoryLinks as $subNode) {
+                        $subHref = $subNode->getAttribute('href');
+                        $subName = trim($subNode->textContent);
+                        
+                        if (!$subName || strlen($subName) < 2) {
+                            continue;
+                        }
+                        
+                        // Пропускаем служебные ссылки
+                        if (stripos($subHref, 'login') !== false || 
+                            stripos($subHref, 'register') !== false ||
+                            stripos($subHref, 'cart') !== false ||
+                            stripos($subHref, 'javascript:') !== false ||
+                            $subHref === '#' || 
+                            (str_starts_with($subHref, '#') && $subHref !== '#eshop_products')) {
+                            continue;
+                        }
+                        
+                        // Формируем полный URL
+                        if (str_starts_with($subHref, 'http')) {
+                            $subFullUrl = $subHref;
+                        } else {
+                            $subFullUrl = $this->baseUrl . '/' . ltrim($subHref, '/');
+                        }
+                        
+                        // Пропускаем товары
+                        if (preg_match('/-d\d+\//', $subFullUrl)) {
+                            continue;
+                        }
+                        
+                        // Извлекаем cat_id подкатегории
+                        $subCatId = null;
+                        if (preg_match('/-c(\d+)(?:\/|#|$)/', $subFullUrl, $matches)) {
+                            $subCatId = (int)$matches[1];
+                        } elseif (preg_match('/cat_id[=:](\d+)/', $subHref, $matches)) {
+                            $subCatId = (int)$matches[1];
+                        }
+                        
+                        if ($subCatId && $subCatId > 0) {
+                            $subcategories[] = [
+                                'id' => $subCatId,
+                                'name' => $subName,
+                                'url' => $this->baseUrl . '/eshop.php?cat_id=' . $subCatId,
+                            ];
+                        }
+                    }
+                }
+                
+                // Добавляем категорию с подкатегориями
+                if (!in_array($mainCatId, $foundCatIds)) {
+                    $foundCatIds[] = $mainCatId;
+                    $categories[] = [
+                        'id' => $mainCatId,
+                        'name' => $mainName,
+                        'url' => $this->baseUrl . '/eshop.php?cat_id=' . $mainCatId,
+                        'subcategories' => $subcategories,
+                    ];
+                }
+            }
+            
+            Log::info("Found categories in accordian with subcategories", [
+                'total_categories' => count($categories),
+                'categories_with_subcategories' => count(array_filter($categories, function($cat) {
+                    return !empty($cat['subcategories']);
+                })),
+                'cat_ids' => array_slice($foundCatIds, 0, 20),
+            ]);
+        }
+
+        // Расширенный набор селекторов для поиска категорий
+        $categorySelectors = [
+            // Прямые ссылки на eshop.php с cat_id
+            "//a[contains(@href, 'eshop.php') and contains(@href, 'cat_id=')]",
+            "//a[contains(@href, 'eshop.php?cat_id=')]",
+            "//a[starts-with(@href, 'eshop.php?cat_id=')]",
+            
+            // Data атрибуты
+            "//a[@data-cat-id]",
+            "//div[@data-cat-id]//a",
+            "//li[@data-cat-id]//a",
+            "//span[@data-cat-id]//a",
+            "//*[@data-category-id]//a",
+            
+            // Классы
+            "//*[@class='category']//a[contains(@href, 'cat_id')]",
+            "//*[contains(@class, 'cat-item')]//a",
+            "//*[contains(@class, 'category-item')]//a",
+            "//*[contains(@class, 'category-link')]",
+            "//*[contains(@class, 'cat-link')]",
+            
+            // Навигация и меню
+            "//nav//a[contains(@href, 'eshop.php')]",
+            "//ul[contains(@class, 'menu')]//a[contains(@href, 'cat_id')]",
+            "//ul[contains(@class, 'nav')]//a[contains(@href, 'cat_id')]",
+            "//div[contains(@class, 'menu')]//a[contains(@href, 'cat_id')]",
+            
+            // Accordion и выпадающие меню
+            "//*[@id='accordian']//a[contains(@href, 'cat_id')]",
+            "//*[@id='accordion']//a[contains(@href, 'cat_id')]",
+            "//*[contains(@class, 'accordion')]//a[contains(@href, 'cat_id')]",
+            "//*[contains(@class, 'collapse')]//a[contains(@href, 'cat_id')]",
+        ];
+
+        Log::info("Starting category search with selectors", [
+            'selectors_count' => count($categorySelectors),
+            'source_url' => $usedUrl,
+        ]);
+
+        foreach ($categorySelectors as $index => $selector) {
+            $nodes = $xpath->query($selector);
+            $foundCount = 0;
+            
+            Log::debug("Trying selector", [
+                'index' => $index,
+                'selector' => $selector,
+                'nodes_found' => $nodes->length,
+            ]);
+
+            foreach ($nodes as $node) {
+                $href = $node->getAttribute('href');
+                $dataCatId = $node->getAttribute('data-cat-id') ?: $node->getAttribute('data-category-id');
+                $name = trim($node->textContent);
+
+                // Пробуем получить название из разных мест
+                if (!$name || strlen($name) < 2) {
+                    // Пробуем получить из title или alt
+                    $name = $node->getAttribute('title') ?: $node->getAttribute('alt') ?: '';
+                    $name = trim($name);
+                    
+                    // Пробуем получить из родительского элемента
+                    if (!$name || strlen($name) < 2) {
+                        $parent = $node->parentNode;
+                        if ($parent) {
+                            $name = trim($parent->textContent);
+                        }
+                    }
+                }
+
+                if (!$name || strlen($name) < 2) {
+                    continue;
+                }
+
+                // Извлекаем cat_id из href или data-cat-id
+                $catId = null;
+                if ($dataCatId) {
+                    $catId = (int)$dataCatId;
+                } elseif ($href) {
+                    // Формируем полный URL для проверки
+                    $fullUrl = str_starts_with($href, 'http') ? $href : $this->baseUrl . '/' . ltrim($href, '/');
+                    
+                    // Пробуем новый формат: -c{id}/ или -c{id}#
+                    if (preg_match('/-c(\d+)(?:\/|#|$)/', $fullUrl, $matches)) {
+                        $catId = (int)$matches[1];
+                    } elseif (preg_match('/-c(\d+)(?:\/|#|$)/', $href, $matches)) {
+                        $catId = (int)$matches[1];
+                    }
+                    
+                    // Пробуем старый формат с cat_id=
+                    if (!$catId) {
+                        if (preg_match('/cat_id=(\d+)/', $href, $matches)) {
+                            $catId = (int)$matches[1];
+                        } elseif (preg_match('/cat_id[=:](\d+)/', $href, $matches)) {
+                            $catId = (int)$matches[1];
+                        } elseif (preg_match('/category[=:](\d+)/', $href, $matches)) {
+                            $catId = (int)$matches[1];
+                        }
+                    }
+                }
+
+                if ($catId && $catId > 0) {
+                    $categories[] = [
+                        'id' => $catId,
+                        'name' => $name,
+                        'url' => $this->baseUrl . '/eshop.php?cat_id=' . $catId,
+                    ];
+                    $foundCount++;
+                }
+            }
+
+            if ($foundCount > 0) {
+                Log::info("Found categories with selector", [
+                    'selector' => $selector,
+                    'count' => $foundCount,
+                ]);
+            }
+        }
+
+        // Если не нашли через селекторы, пробуем найти все ссылки с cat_id
+        if (count($categories) === 0) {
+            Log::info("No categories found with selectors, trying all links");
+            $allLinks = $xpath->query("//a[@href]");
+            Log::info("Total links found", ['count' => $allLinks->length]);
+            
+            $foundCatIds = [];
+            foreach ($allLinks as $node) {
+                $href = $node->getAttribute('href');
+                $name = trim($node->textContent);
+
+                if (!$name || strlen($name) < 2) {
+                    continue;
+                }
+
+                // Формируем полный URL
+                $fullUrl = str_starts_with($href, 'http') ? $href : $this->baseUrl . '/' . ltrim($href, '/');
+                
+                // Ищем cat_id в новом формате: -c{id}/ или -c{id}#
+                $catId = null;
+                if (preg_match('/-c(\d+)(?:\/|#|$)/', $fullUrl, $matches)) {
+                    $catId = (int)$matches[1];
+                } elseif (preg_match('/-c(\d+)(?:\/|#|$)/', $href, $matches)) {
+                    $catId = (int)$matches[1];
+                }
+                
+                // Пробуем старый формат с cat_id=
+                if (!$catId) {
+                    if (preg_match('/cat_id[=:](\d+)/', $href, $matches)) {
+                        $catId = (int)$matches[1];
+                    } elseif (preg_match('/eshop\.php.*cat_id[=:](\d+)/', $href, $matches)) {
+                        $catId = (int)$matches[1];
+                    }
+                }
+
+                if ($catId && $catId > 0 && !in_array($catId, $foundCatIds)) {
+                    $foundCatIds[] = $catId;
+                    $categories[] = [
+                        'id' => $catId,
+                        'name' => $name,
+                        'url' => $this->baseUrl . '/eshop.php?cat_id=' . $catId,
+                    ];
+                }
+            }
+            
+            Log::info("Found categories from all links", [
+                'count' => count($categories),
+                'cat_ids' => $foundCatIds,
+            ]);
+        }
+
+        // Также пробуем найти категории через JavaScript или скрытые элементы
+        if (count($categories) === 0) {
+            Log::info("Trying to find categories in script tags or hidden elements");
+            
+            // Ищем в script тегах
+            $scriptNodes = $xpath->query("//script");
+            foreach ($scriptNodes as $scriptNode) {
+                $scriptContent = $scriptNode->textContent;
+                // Ищем паттерны типа cat_id: 19 или "cat_id": 19
+                if (preg_match_all('/cat_id["\']?\s*[:=]\s*(\d+)/i', $scriptContent, $matches)) {
+                    foreach ($matches[1] as $catId) {
+                        $catId = (int)$catId;
+                        if ($catId > 0) {
+                            $categories[] = [
+                                'id' => $catId,
+                                'name' => 'Категория ' . $catId,
+                                'url' => $this->baseUrl . '/eshop.php?cat_id=' . $catId,
+                            ];
+                        }
+                    }
+                }
+                
+                // Ищем массивы категорий в JavaScript
+                // Паттерн: [{id: 19, name: "..."}, ...] или {"19": "..."}
+                if (preg_match_all('/["\']?id["\']?\s*[:=]\s*(\d+).*?["\']?name["\']?\s*[:=]\s*["\']([^"\']+)["\']/', $scriptContent, $matches, PREG_SET_ORDER)) {
+                    foreach ($matches as $match) {
+                        $catId = (int)$match[1];
+                        $catName = $match[2] ?? 'Категория ' . $catId;
+                        if ($catId > 0) {
+                            $categories[] = [
+                                'id' => $catId,
+                                'name' => $catName,
+                                'url' => $this->baseUrl . '/eshop.php?cat_id=' . $catId,
+                            ];
+                        }
+                    }
+                }
+            }
+            
+            // Пробуем найти в скрытых input полях или data атрибутах
+            $hiddenInputs = $xpath->query("//input[@type='hidden' and contains(@name, 'cat')] | //input[@type='hidden' and contains(@id, 'cat')]");
+            foreach ($hiddenInputs as $input) {
+                $value = $input->getAttribute('value');
+                $name = $input->getAttribute('name') ?: $input->getAttribute('id');
+                if ($value && is_numeric($value) && (int)$value > 0) {
+                    $categories[] = [
+                        'id' => (int)$value,
+                        'name' => 'Категория ' . $value . ' (' . $name . ')',
+                        'url' => $this->baseUrl . '/eshop.php?cat_id=' . $value,
+                    ];
+                }
+            }
+        }
+
+        // Удаляем дубликаты по ID
+        $uniqueCategories = [];
+        $seenIds = [];
+        foreach ($categories as $category) {
+            if (!in_array($category['id'], $seenIds)) {
+                $uniqueCategories[] = $category;
+                $seenIds[] = $category['id'];
+            }
+        }
+
+        // Сортируем по ID
+        usort($uniqueCategories, function($a, $b) {
+            return $a['id'] <=> $b['id'];
+        });
+
+        // Если все еще не нашли, пробуем парсить eshop.php напрямую с известными cat_id
+        // для извлечения названий категорий
+        if (count($uniqueCategories) === 0) {
+            Log::info("No categories found with eshop-specific methods, trying to parse eshop.php directly");
+            
+            // Пробуем известные cat_id (обычно начинаются с небольших чисел)
+            $knownCatIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+            
+            foreach ($knownCatIds as $testCatId) {
+                try {
+                    $testUrl = $this->baseUrl . '/eshop.php?cat_id=' . $testCatId . '&load-more=1';
+                    $testHtml = $this->fetchPage($testUrl);
+                    
+                    if ($testHtml) {
+                        $testXpath = $this->parseHtml($testHtml);
+                        if ($testXpath) {
+                            // Ищем заголовок категории на странице
+                            $titleSelectors = [
+                                "//h1",
+                                "//h2",
+                                "//title",
+                                "//*[@class='category-title']",
+                                "//*[@class='page-title']",
+                                "//*[contains(@class, 'title')]",
+                            ];
+                            
+                            $categoryName = null;
+                            foreach ($titleSelectors as $selector) {
+                                $titleNodes = $testXpath->query($selector);
+                                if ($titleNodes->length > 0) {
+                                    $categoryName = trim($titleNodes->item(0)->textContent);
+                                    if ($categoryName && strlen($categoryName) > 2) {
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // Если нашли название или страница содержит товары, считаем категорию валидной
+                            if ($categoryName || stripos($testHtml, 'product') !== false || stripos($testHtml, 'товар') !== false) {
+                                $uniqueCategories[] = [
+                                    'id' => $testCatId,
+                                    'name' => $categoryName ?: 'Категория ' . $testCatId,
+                                    'url' => $this->baseUrl . '/eshop.php?cat_id=' . $testCatId,
+                                ];
+                                Log::info("Found valid category by testing cat_id", [
+                                    'cat_id' => $testCatId,
+                                    'name' => $categoryName,
+                                ]);
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Пропускаем ошибки при тестировании отдельных cat_id
+                    continue;
+                }
+                
+                // Ограничиваем количество проверок для производительности
+                if (count($uniqueCategories) >= 10) {
+                    break;
+                }
+            }
+        }
+
+        // Если все еще не нашли категории, но нашли accordian, 
+        // значит проблема в извлечении cat_id - логируем для отладки
+        if (count($uniqueCategories) === 0 && $accordianNode) {
+            Log::warning("Accordian found but no categories extracted", [
+                'source_url' => $usedUrl,
+                'accordian_exists' => true,
+            ]);
+            
+            // Пробуем извлечь все ссылки из accordian для отладки
+            $debugLinks = $xpath->query(".//a[@href]", $accordianNode);
+            $debugUrls = [];
+            foreach ($debugLinks as $link) {
+                $debugHref = $link->getAttribute('href');
+                $debugName = trim($link->textContent);
+                if ($debugName && strlen($debugName) > 2) {
+                    $debugUrls[] = [
+                        'href' => $debugHref,
+                        'name' => substr($debugName, 0, 50), // Первые 50 символов
+                    ];
+                }
+            }
+            Log::info("Debug: Links found in accordian", [
+                'total_links' => $debugLinks->length,
+                'sample_links' => array_slice($debugUrls, 0, 10),
+            ]);
+        }
+
+        Log::info("Eshop categories search completed", [
+            'total_found' => count($uniqueCategories),
+            'source_url' => $usedUrl,
+            'categories' => array_slice($uniqueCategories, 0, 10), // Логируем первые 10
+        ]);
+
+        return $uniqueCategories;
+    }
+
+    /**
+     * Получить товары из категории через eshop.php
+     */
+    public function getProductsFromEshopCategory(int $catId, int $page = 1): array
+    {
+        // Убеждаемся, что авторизованы
+        if (!$this->isAuthenticated) {
+            if (!$this->authenticate()) {
+                Log::error("Failed to authenticate before fetching products from eshop category");
+                return [];
+            }
+        }
+
+        // Формируем URL для получения товаров
+        // Первая страница (page=1) использует load-more=0, вторая (page=2) - load-more=1 и т.д.
+        $url = $this->baseUrl . '/eshop.php?cat_id=' . $catId;
+        $loadMore = $page - 1; // page=1 -> load-more=0, page=2 -> load-more=1
+        $url .= '&load-more=' . $loadMore;
+
+        $html = $this->fetchPage($url);
+        if (!$html) {
+            Log::warning("Failed to fetch eshop products page", ['url' => $url]);
+            return [];
+        }
+
+        $xpath = $this->parseHtml($html);
+        if (!$xpath) {
+            Log::warning("Failed to parse HTML for eshop products");
+            return [];
+        }
+
+        $products = [];
+
+        // Ищем товары на странице
+        // Обычно товары находятся в элементах с классом product или item
+        $productSelectors = [
+            "//div[contains(@class, 'product')]//a[@href]",
+            "//div[contains(@class, 'item')]//a[@href]",
+            "//div[contains(@class, 'product-item')]//a[@href]",
+            "//a[contains(@href, '-d')]",
+            "//div[@data-product-id]//a",
+        ];
+
+        foreach ($productSelectors as $selector) {
+            $nodes = $xpath->query($selector);
+            foreach ($nodes as $node) {
+                $href = $node->getAttribute('href');
+                $name = trim($node->textContent);
+
+                if (!$name || strlen($name) < 2) {
+                    continue;
+                }
+
+                // Формируем полный URL
+                if (str_starts_with($href, 'http')) {
+                    $fullUrl = $href;
+                } else {
+                    $fullUrl = $this->baseUrl . '/' . ltrim($href, '/');
+                }
+
+                // Проверяем, что это ссылка на товар (обычно содержит -d123456/)
+                if (preg_match('/-d\d+\/$/', $fullUrl) || stripos($fullUrl, 'essensworld.ru') !== false) {
+                    $normalizedUrl = rtrim($fullUrl, '/');
+                    
+                    // Ищем изображение товара ВНУТРИ ссылки на товар (как в примере: <a><img></a>)
+                    $imageUrl = null;
+                    
+                    // Сначала ищем изображение непосредственно внутри ссылки
+                    $imageNode = $xpath->query(".//img[@src]", $node)->item(0);
+                    
+                    // Если не нашли внутри ссылки, ищем в родительском элементе ссылки (контейнер с классом relative)
+                    if (!$imageNode) {
+                        $parent = $node->parentNode;
+                        if ($parent && $parent->getAttribute('class') && strpos($parent->getAttribute('class'), 'relative') !== false) {
+                            $imageNode = $xpath->query(".//img[@src]", $parent)->item(0);
+                        }
+                    }
+                    
+                    // Если все еще не нашли, ищем в родительских элементах (fallback)
+                    if (!$imageNode) {
+                        $searchNode = $node->parentNode;
+                        $maxDepth = 3;
+                        $depth = 0;
+                        while ($searchNode && $depth < $maxDepth) {
+                            // Ищем изображения с классом product_img или product_img_w (основные изображения товаров)
+                            $imageNodes = $xpath->query(".//img[contains(@class, 'product_img') or contains(@class, 'product')]", $searchNode);
+                            if ($imageNodes->length > 0) {
+                                $imageNode = $imageNodes->item(0);
+                                break;
+                            }
+                            // Если не нашли по классу, ищем любое изображение
+                            $imageNodes = $xpath->query(".//img[@src]", $searchNode);
+                            if ($imageNodes->length > 0) {
+                                $imageNode = $imageNodes->item(0);
+                                break;
+                            }
+                            $searchNode = $searchNode->parentNode;
+                            $depth++;
+                        }
+                    }
+                    
+                    if ($imageNode) {
+                        $imgSrc = $imageNode->getAttribute('src') ?: $imageNode->getAttribute('data-src');
+                        if ($imgSrc) {
+                            // Пропускаем служебные изображения
+                            if (stripos($imgSrc, 'coupon') === false && 
+                                stripos($imgSrc, 'icon') === false && 
+                                stripos($imgSrc, 'logo') === false &&
+                                stripos($imgSrc, 'placeholder') === false &&
+                                stripos($imgSrc, 'no-image') === false) {
+                                
+                                // Если уже полный URL с протоколом
+                                if (str_starts_with($imgSrc, 'http://') || str_starts_with($imgSrc, 'https://')) {
+                                    $imageUrl = $imgSrc;
+                                } 
+                                // Если начинается с // (протокол-относительный URL)
+                                elseif (str_starts_with($imgSrc, '//')) {
+                                    $imageUrl = 'https:' . $imgSrc;
+                                }
+                                // Если путь начинается с /static. или содержит домен в пути
+                                elseif (str_starts_with($imgSrc, '/static.') || preg_match('/^\/[^\/]+\.(com|ru|net|org)/', $imgSrc)) {
+                                    // Формируем правильный URL: https://static.essensworld.com/...
+                                    if (preg_match('/^\/([^\/]+\.(com|ru|net|org))(.+)$/', $imgSrc, $matches)) {
+                                        $imageUrl = 'https://' . $matches[1] . $matches[3];
+                                    } else {
+                                        $imageUrl = 'https://www' . $imgSrc;
+                                    }
+                                }
+                                // Если начинается с /, но не содержит домен в пути
+                                elseif (str_starts_with($imgSrc, '/')) {
+                                    $imageUrl = $this->baseUrl . $imgSrc;
+                                }
+                                // Относительный путь
+                                else {
+                                    $imageUrl = $this->baseUrl . '/' . ltrim($imgSrc, '/');
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Ищем цену товара (ищем в родительском элементе и его родителях)
+                    $price = null;
+                    $priceText = null;
+                    $searchNode = $node->parentNode;
+                    $depth = 0;
+                    while ($searchNode && $depth < $maxDepth) {
+                        $priceNodes = $xpath->query(".//*[contains(@class, 'price')] | .//*[contains(@class, 'cost')] | .//span[contains(text(), 'руб')] | .//span[contains(text(), '₽')] | .//*[contains(text(), 'руб')]", $searchNode);
+                        foreach ($priceNodes as $priceNode) {
+                            $priceText = trim($priceNode->textContent);
+                            // Ищем число с возможными пробелами и запятыми
+                            if (preg_match('/(\d+[\s,.]?\d*)/', $priceText, $matches)) {
+                                $price = (float)str_replace([' ', ','], '', $matches[1]);
+                                if ($price > 0) {
+                                    break 2; // Выходим из обоих циклов
+                                }
+                            }
+                        }
+                        $searchNode = $searchNode->parentNode;
+                        $depth++;
+                    }
+                    
+                    // Ищем артикул/SKU из URL (извлекаем -d{id})
+                    $sku = null;
+                    if (preg_match('/-d(\d+)/', $normalizedUrl, $matches)) {
+                        $sku = $matches[1];
+                    }
+                    
+                    $products[] = [
+                        'name' => $name,
+                        'url' => $normalizedUrl,
+                        'image' => $imageUrl,
+                        'price' => $price,
+                        'price_text' => $priceText,
+                        'sku' => $sku,
+                    ];
+                }
+            }
+
+            if (count($products) > 0) {
+                break; // Если нашли товары, прекращаем поиск
+            }
+        }
+
+        // Если не нашли через селекторы, пробуем найти все ссылки с паттерном товара
+        if (count($products) === 0) {
+            $allLinks = $xpath->query("//a[@href]");
+            foreach ($allLinks as $node) {
+                $href = $node->getAttribute('href');
+                $name = trim($node->textContent);
+
+                if (!$name || strlen($name) < 2) {
+                    continue;
+                }
+
+                $fullUrl = str_starts_with($href, 'http') ? $href : $this->baseUrl . '/' . ltrim($href, '/');
+
+                // Проверяем, что это товар (паттерн -d123456/)
+                if (preg_match('/-d\d+\/$/', $fullUrl) && stripos($fullUrl, 'essensworld.ru') !== false) {
+                    $normalizedUrl = rtrim($fullUrl, '/');
+                    
+                    // Ищем изображение товара ВНУТРИ ссылки на товар (как в примере: <a><img></a>)
+                    $imageUrl = null;
+                    
+                    // Сначала ищем изображение непосредственно внутри ссылки
+                    $imageNode = $xpath->query(".//img[@src]", $node)->item(0);
+                    
+                    // Если не нашли внутри ссылки, ищем в родительском элементе ссылки (контейнер с классом relative)
+                    if (!$imageNode) {
+                        $parent = $node->parentNode;
+                        if ($parent && $parent->getAttribute('class') && strpos($parent->getAttribute('class'), 'relative') !== false) {
+                            $imageNode = $xpath->query(".//img[@src]", $parent)->item(0);
+                        }
+                    }
+                    
+                    // Если все еще не нашли, ищем в родительских элементах (fallback)
+                    if (!$imageNode) {
+                        $searchNode = $node->parentNode;
+                        $maxDepth = 3;
+                        $depth = 0;
+                        while ($searchNode && $depth < $maxDepth) {
+                            // Ищем изображения с классом product_img или product_img_w (основные изображения товаров)
+                            $imageNodes = $xpath->query(".//img[contains(@class, 'product_img') or contains(@class, 'product')]", $searchNode);
+                            if ($imageNodes->length > 0) {
+                                $imageNode = $imageNodes->item(0);
+                                break;
+                            }
+                            // Если не нашли по классу, ищем любое изображение
+                            $imageNodes = $xpath->query(".//img[@src]", $searchNode);
+                            if ($imageNodes->length > 0) {
+                                $imageNode = $imageNodes->item(0);
+                                break;
+                            }
+                            $searchNode = $searchNode->parentNode;
+                            $depth++;
+                        }
+                    }
+                    
+                    if ($imageNode) {
+                        $imgSrc = $imageNode->getAttribute('src') ?: $imageNode->getAttribute('data-src');
+                        if ($imgSrc) {
+                            // Пропускаем служебные изображения
+                            if (stripos($imgSrc, 'coupon') === false && 
+                                stripos($imgSrc, 'icon') === false && 
+                                stripos($imgSrc, 'logo') === false &&
+                                stripos($imgSrc, 'placeholder') === false &&
+                                stripos($imgSrc, 'no-image') === false) {
+                                
+                                // Если уже полный URL с протоколом
+                                if (str_starts_with($imgSrc, 'http://') || str_starts_with($imgSrc, 'https://')) {
+                                    $imageUrl = $imgSrc;
+                                } 
+                                // Если начинается с // (протокол-относительный URL)
+                                elseif (str_starts_with($imgSrc, '//')) {
+                                    $imageUrl = 'https:' . $imgSrc;
+                                }
+                                // Если путь начинается с /static. или содержит домен в пути
+                                elseif (str_starts_with($imgSrc, '/static.') || preg_match('/^\/[^\/]+\.(com|ru|net|org)/', $imgSrc)) {
+                                    // Формируем правильный URL: https://static.essensworld.com/...
+                                    if (preg_match('/^\/([^\/]+\.(com|ru|net|org))(.+)$/', $imgSrc, $matches)) {
+                                        $imageUrl = 'https://' . $matches[1] . $matches[3];
+                                    } else {
+                                        $imageUrl = 'https://www' . $imgSrc;
+                                    }
+                                }
+                                // Если начинается с /, но не содержит домен в пути
+                                elseif (str_starts_with($imgSrc, '/')) {
+                                    $imageUrl = $this->baseUrl . $imgSrc;
+                                }
+                                // Относительный путь
+                                else {
+                                    $imageUrl = $this->baseUrl . '/' . ltrim($imgSrc, '/');
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Ищем цену товара (ищем в родительском элементе и его родителях)
+                    $price = null;
+                    $priceText = null;
+                    $searchNode = $node->parentNode;
+                    $depth = 0;
+                    while ($searchNode && $depth < $maxDepth) {
+                        $priceNodes = $xpath->query(".//*[contains(@class, 'price')] | .//*[contains(@class, 'cost')] | .//span[contains(text(), 'руб')] | .//span[contains(text(), '₽')] | .//*[contains(text(), 'руб')]", $searchNode);
+                        foreach ($priceNodes as $priceNode) {
+                            $priceText = trim($priceNode->textContent);
+                            // Ищем число с возможными пробелами и запятыми
+                            if (preg_match('/(\d+[\s,.]?\d*)/', $priceText, $matches)) {
+                                $price = (float)str_replace([' ', ','], '', $matches[1]);
+                                if ($price > 0) {
+                                    break 2; // Выходим из обоих циклов
+                                }
+                            }
+                        }
+                        $searchNode = $searchNode->parentNode;
+                        $depth++;
+                    }
+                    
+                    // Ищем артикул/SKU из URL
+                    $sku = null;
+                    if (preg_match('/-d(\d+)/', $normalizedUrl, $matches)) {
+                        $sku = $matches[1];
+                    }
+                    
+                    $products[] = [
+                        'name' => $name,
+                        'url' => $normalizedUrl,
+                        'image' => $imageUrl,
+                        'price' => $price,
+                        'price_text' => $priceText,
+                        'sku' => $sku,
+                    ];
+                }
+            }
+        }
+
+        // Удаляем дубликаты по URL
+        $uniqueProducts = [];
+        $seenUrls = [];
+        foreach ($products as $product) {
+            if (!in_array($product['url'], $seenUrls)) {
+                $uniqueProducts[] = $product;
+                $seenUrls[] = $product['url'];
+            }
+        }
+
+        Log::info("Eshop products found", [
+            'cat_id' => $catId,
+            'page' => $page,
+            'total' => count($uniqueProducts),
+        ]);
+
+        return $uniqueProducts;
     }
 }
 

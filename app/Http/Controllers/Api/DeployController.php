@@ -211,9 +211,10 @@ class DeployController extends Controller
             }
 
             // Обновление файлов из git
+            // Используем переменную окружения GIT_SAFE_DIRECTORY (работает без изменения конфигурации)
             $output = [];
-            $envString = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' ';
-            exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' pull origin master 2>&1', $output, $status);
+            $gitEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' GIT_CONFIG_NOSYSTEM=1 ';
+            exec($gitEnv . 'cd ' . $projectPath . ' && git pull origin master 2>&1', $output, $status);
             $allOutput['git_pull'] = ['status' => $status, 'output' => $output];
             if ($status !== 0) {
                 Log::error('Deploy: Git pull failed', ['output' => $output, 'status' => $status]);

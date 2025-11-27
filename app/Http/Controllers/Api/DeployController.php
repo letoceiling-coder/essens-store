@@ -179,9 +179,39 @@ class DeployController extends Controller
                 ], 500);
             }
 
-            Log::info('Deploy: Deployment successful');
+            // Получаем информацию о текущем коммите
+            $output = [];
+            exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' log -1 --pretty=format:"%H|%s|%an|%ad" --date=iso 2>&1', $output, $status);
+            $commitInfo = [];
+            if ($status === 0 && !empty($output)) {
+                $commitData = explode('|', $output[0]);
+                $commitInfo = [
+                    'hash' => $commitData[0] ?? null,
+                    'message' => $commitData[1] ?? null,
+                    'author' => $commitData[2] ?? null,
+                    'date' => $commitData[3] ?? null,
+                ];
+            }
+            
+            // Получаем короткий хеш коммита
+            $output = [];
+            exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' rev-parse --short HEAD 2>&1', $output, $status);
+            $shortHash = $status === 0 && !empty($output) ? $output[0] : null;
+            
+            // Получаем дату последнего обновления файлов
+            $lastModified = filemtime(base_path() . '/.git/HEAD');
+            
+            Log::info('Deploy: Deployment successful', [
+                'commit' => $shortHash,
+                'commit_info' => $commitInfo,
+            ]);
+            
             return response()->json([
                 'status' => 'Deployment successful',
+                'commit' => $shortHash,
+                'commit_info' => $commitInfo,
+                'deployed_at' => date('Y-m-d H:i:s'),
+                'last_modified' => date('Y-m-d H:i:s', $lastModified),
                 'all_output' => $allOutput
             ]);
         } catch (\Exception $e) {
@@ -192,6 +222,78 @@ class DeployController extends Controller
             return response()->json([
                 'error' => 'Internal server error',
                 'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Получить информацию о текущей версии на сервере
+     */
+    public function version(Request $request)
+    {
+        try {
+            $projectPath = base_path();
+            $info = [];
+
+            // Проверяем наличие git
+            $gitDir = $projectPath . '/.git';
+            if (is_dir($gitDir)) {
+                // Получаем текущий коммит
+                $output = [];
+                exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' rev-parse HEAD 2>&1', $output, $status);
+                $info['commit_hash'] = $status === 0 && !empty($output) ? $output[0] : null;
+
+                // Короткий хеш
+                $output = [];
+                exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' rev-parse --short HEAD 2>&1', $output, $status);
+                $info['commit_short'] = $status === 0 && !empty($output) ? $output[0] : null;
+
+                // Информация о коммите
+                $output = [];
+                exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' log -1 --pretty=format:"%H|%s|%an|%ad" --date=iso 2>&1', $output, $status);
+                if ($status === 0 && !empty($output)) {
+                    $commitData = explode('|', $output[0]);
+                    $info['commit_info'] = [
+                        'hash' => $commitData[0] ?? null,
+                        'message' => $commitData[1] ?? null,
+                        'author' => $commitData[2] ?? null,
+                        'date' => $commitData[3] ?? null,
+                    ];
+                }
+
+                // Ветка
+                $output = [];
+                exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' branch --show-current 2>&1', $output, $status);
+                $info['branch'] = $status === 0 && !empty($output) ? $output[0] : null;
+
+                // Статус (есть ли незакоммиченные изменения)
+                $output = [];
+                exec('cd ' . $projectPath . ' && git -c safe.directory=' . escapeshellarg($projectPath) . ' status --porcelain 2>&1', $output, $status);
+                $info['has_uncommitted_changes'] = !empty($output);
+            } else {
+                $info['git_available'] = false;
+            }
+
+            // Информация о приложении
+            $info['app_name'] = config('app.name');
+            $info['app_env'] = config('app.env');
+            $info['app_debug'] = config('app.debug');
+            $info['laravel_version'] = app()->version();
+            $info['php_version'] = PHP_VERSION;
+            $info['server_time'] = date('Y-m-d H:i:s');
+            $info['timezone'] = config('app.timezone');
+
+            return response()->json([
+                'success' => true,
+                'version' => $info,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Deploy: Version check failed', [
+                'message' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

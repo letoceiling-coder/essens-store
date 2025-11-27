@@ -20,6 +20,9 @@ Route::post('/telegram/webhook/{token}', [\App\Http\Controllers\Api\TelegramWebh
 // Deploy endpoint (защищён секретным ключом в заголовке Deploy-Secret)
 Route::post('/deploy', [DeployController::class, 'deploy']);
 
+// Version endpoint (публичный, для проверки версии на сервере)
+Route::get('/deploy/version', [DeployController::class, 'version']);
+
 // Публичные роуты
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);

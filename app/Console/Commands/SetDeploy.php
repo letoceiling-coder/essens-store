@@ -114,8 +114,33 @@ class SetDeploy extends Command
             if ($response->successful()) {
                 $this->info('Обновление на сервере выполнено успешно');
                 $responseData = $response->json();
+                
                 if (isset($responseData['status'])) {
                     $this->line('Статус: ' . $responseData['status']);
+                }
+                
+                // Выводим информацию о коммите
+                if (isset($responseData['commit'])) {
+                    $this->newLine();
+                    $this->info('Информация о версии на сервере:');
+                    $this->line('  Коммит: ' . $responseData['commit']);
+                    
+                    if (isset($responseData['commit_info'])) {
+                        $commitInfo = $responseData['commit_info'];
+                        if (isset($commitInfo['message'])) {
+                            $this->line('  Сообщение: ' . $commitInfo['message']);
+                        }
+                        if (isset($commitInfo['author'])) {
+                            $this->line('  Автор: ' . $commitInfo['author']);
+                        }
+                        if (isset($commitInfo['date'])) {
+                            $this->line('  Дата: ' . $commitInfo['date']);
+                        }
+                    }
+                    
+                    if (isset($responseData['deployed_at'])) {
+                        $this->line('  Время деплоя: ' . $responseData['deployed_at']);
+                    }
                 }
             } else {
                 $this->error('Ошибка обновления на сервере');

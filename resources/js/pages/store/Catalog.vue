@@ -450,10 +450,41 @@
                         <div class="flex items-center gap-2 ml-auto">
                             <span class="text-sm text-muted-foreground hidden sm:inline">Отображение:</span>
                             <div class="flex items-center gap-1 bg-surface border border-border rounded-lg p-1">
+                                <!-- Мобильная версия: только 1 и 2 колонки -->
+                                <button
+                                    @click="setGridColumns(1)"
+                                    :class="[
+                                        'p-2 rounded transition-colors lg:hidden',
+                                        gridColumns === 1
+                                            ? 'bg-primary text-primary-contrast'
+                                            : 'text-muted-foreground hover:bg-muted'
+                                    ]"
+                                    title="1 колонка"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                    </svg>
+                                </button>
+                                <button
+                                    @click="setGridColumns(2)"
+                                    :class="[
+                                        'p-2 rounded transition-colors lg:hidden',
+                                        gridColumns === 2
+                                            ? 'bg-primary text-primary-contrast'
+                                            : 'text-muted-foreground hover:bg-muted'
+                                    ]"
+                                    title="2 колонки"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h8M4 12h8M4 18h8M12 6h8M12 12h8M12 18h8" />
+                                    </svg>
+                                </button>
+                                
+                                <!-- Десктоп версия: 3, 4, 5 колонок -->
                                 <button
                                     @click="setGridColumns(3)"
                                     :class="[
-                                        'p-2 rounded transition-colors',
+                                        'p-2 rounded transition-colors hidden lg:block',
                                         gridColumns === 3
                                             ? 'bg-primary text-primary-contrast'
                                             : 'text-muted-foreground hover:bg-muted'
@@ -467,7 +498,7 @@
                                 <button
                                     @click="setGridColumns(4)"
                                     :class="[
-                                        'p-2 rounded transition-colors',
+                                        'p-2 rounded transition-colors hidden lg:block',
                                         gridColumns === 4
                                             ? 'bg-primary text-primary-contrast'
                                             : 'text-muted-foreground hover:bg-muted'
@@ -481,7 +512,7 @@
                                 <button
                                     @click="setGridColumns(5)"
                                     :class="[
-                                        'p-2 rounded transition-colors',
+                                        'p-2 rounded transition-colors hidden lg:block',
                                         gridColumns === 5
                                             ? 'bg-primary text-primary-contrast'
                                             : 'text-muted-foreground hover:bg-muted'
@@ -521,6 +552,8 @@
                         tag="div"
                         :class="[
                             'grid',
+                            gridColumns === 1 ? 'grid-cols-1 gap-4' : '',
+                            gridColumns === 2 ? 'grid-cols-1 sm:grid-cols-2 gap-4' : '',
                             gridColumns === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : '',
                             gridColumns === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : '',
                             gridColumns === 5 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3' : '',
@@ -550,26 +583,40 @@
                                 </svg>
                                 <div v-if="product.promotions?.length > 0" :class="[
                                     'absolute top-1 left-1 bg-red-500 text-white rounded',
-                                    gridColumns === 4 ? 'text-[10px] px-1.5 py-0.5' : gridColumns === 5 ? 'text-[9px] px-1 py-0.5' : 'text-xs px-2 py-1'
+                                    gridColumns === 1 ? 'text-xs px-2 py-1' :
+                                    gridColumns === 2 ? 'text-xs px-2 py-1' :
+                                    gridColumns === 4 ? 'text-[10px] px-1.5 py-0.5' : 
+                                    gridColumns === 5 ? 'text-[9px] px-1 py-0.5' : 'text-xs px-2 py-1'
                                 ]">
                                     Акция
                                 </div>
                                 <div v-if="!product.in_stock" class="absolute inset-0 bg-black/50 flex items-center justify-center">
                                     <span :class="[
                                         'bg-white text-foreground rounded-lg font-medium',
-                                        gridColumns === 4 ? 'px-2 py-1 text-xs' : gridColumns === 5 ? 'px-1.5 py-0.5 text-[10px]' : 'px-4 py-2'
+                                        gridColumns === 1 ? 'px-4 py-2' :
+                                        gridColumns === 2 ? 'px-4 py-2' :
+                                        gridColumns === 4 ? 'px-2 py-1 text-xs' : 
+                                        gridColumns === 5 ? 'px-1.5 py-0.5 text-[10px]' : 'px-4 py-2'
                                     ]">Нет в наличии</span>
                                 </div>
                             </div>
                             <div :class="[
-                                gridColumns === 4 ? 'p-3' : gridColumns === 5 ? 'p-2' : 'p-4'
+                                gridColumns === 1 ? 'p-4' :
+                                gridColumns === 2 ? 'p-4' :
+                                gridColumns === 4 ? 'p-3' : 
+                                gridColumns === 5 ? 'p-2' : 'p-4'
                             ]">
                                 <h3 :class="[
                                     'font-semibold mb-1.5 line-clamp-2',
-                                    gridColumns === 4 ? 'text-sm' : gridColumns === 5 ? 'text-xs' : 'text-base'
+                                    gridColumns === 1 ? 'text-base' :
+                                    gridColumns === 2 ? 'text-base' :
+                                    gridColumns === 4 ? 'text-sm' : 
+                                    gridColumns === 5 ? 'text-xs' : 'text-base'
                                 ]">{{ product.name }}</h3>
                                 <p v-if="product.description && gridColumns < 5" :class="[
                                     'text-muted-foreground mb-2 line-clamp-2',
+                                    gridColumns === 1 ? 'text-sm' :
+                                    gridColumns === 2 ? 'text-sm' :
                                     gridColumns === 4 ? 'text-xs' : 'text-sm'
                                 ]">
                                     {{ product.description }}
@@ -582,11 +629,17 @@
                                         <div :class="gridColumns === 5 ? 'flex flex-col' : ''">
                                             <span :class="[
                                                 'font-bold text-primary',
-                                                gridColumns === 4 ? 'text-lg' : gridColumns === 5 ? 'text-base' : 'text-xl'
+                                                gridColumns === 1 ? 'text-xl' :
+                                                gridColumns === 2 ? 'text-xl' :
+                                                gridColumns === 4 ? 'text-lg' : 
+                                                gridColumns === 5 ? 'text-base' : 'text-xl'
                                             ]">{{ formatPrice(getProductPrice(product)) }}</span>
                                             <span v-if="(product.recommended_price && product.old_price) || product.promotions?.length > 0" :class="[
                                                 'text-muted-foreground line-through',
-                                                gridColumns === 4 ? 'ml-1.5 text-xs' : gridColumns === 5 ? 'ml-1 text-[10px]' : 'ml-2 text-sm'
+                                                gridColumns === 1 ? 'ml-2 text-sm' :
+                                                gridColumns === 2 ? 'ml-2 text-sm' :
+                                                gridColumns === 4 ? 'ml-1.5 text-xs' : 
+                                                gridColumns === 5 ? 'ml-1 text-[10px]' : 'ml-2 text-sm'
                                             ]">
                                                 {{ formatPrice(product.old_price || product.price) }}
                                             </span>
@@ -597,7 +650,10 @@
                                         :disabled="!product.in_stock"
                                         :class="[
                                             'bg-primary text-primary-contrast rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed',
-                                            gridColumns === 4 ? 'px-3 py-1.5 text-xs' : gridColumns === 5 ? 'px-2 py-1 text-[10px] w-full' : 'px-4 py-2 text-sm'
+                                            gridColumns === 1 ? 'px-4 py-2 text-sm' :
+                                            gridColumns === 2 ? 'px-4 py-2 text-sm' :
+                                            gridColumns === 4 ? 'px-3 py-1.5 text-xs' : 
+                                            gridColumns === 5 ? 'px-2 py-1 text-[10px] w-full' : 'px-4 py-2 text-sm'
                                         ]"
                                     >
                                         В корзину
@@ -665,8 +721,32 @@ export default {
         const loadingCategories = ref(true);
         const showFilters = ref(false);
         
-        // Grid columns (default: 4)
-        const gridColumns = ref(parseInt(localStorage.getItem('catalogGridColumns')) || 4);
+        // Grid columns (default: 1 для мобильной версии, 4 для десктопа)
+        const getDefaultGridColumns = () => {
+            const saved = localStorage.getItem('catalogGridColumns');
+            if (saved) {
+                const savedValue = parseInt(saved);
+                // Если сохраненное значение для мобильной версии (1 или 2), используем его
+                if (savedValue === 1 || savedValue === 2) {
+                    // Проверяем, мобильная ли версия
+                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                        return savedValue;
+                    }
+                }
+                // Если сохраненное значение для десктопа (3, 4, 5), используем его
+                if (savedValue >= 3 && savedValue <= 5) {
+                    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                        return savedValue;
+                    }
+                }
+            }
+            // По умолчанию: 1 для мобильной, 4 для десктопа
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                return 1;
+            }
+            return 4;
+        };
+        const gridColumns = ref(getDefaultGridColumns());
         
         // Filters
         const selectedCategoryId = ref(null);

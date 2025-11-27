@@ -536,9 +536,11 @@
                             <div class="aspect-square bg-muted flex items-center justify-center overflow-hidden relative">
                                 <img
                                     v-if="product.primary_image?.url"
-                                    :src="product.primary_image.url"
+                                    :src="getImageUrl(product.primary_image.url)"
                                     :alt="product.name"
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    @error="handleImageError"
+                                    @load="handleImageLoad"
                                 />
                                 <svg v-else :class="[
                                     'text-muted-foreground',
@@ -930,6 +932,39 @@ export default {
             return product.recommended_price || product.price || 0;
         };
 
+        const getImageUrl = (url) => {
+            if (!url) return '';
+            
+            // Если URL уже абсолютный (начинается с http:// или https://), возвращаем как есть
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                return url;
+            }
+            
+            // Если URL начинается с //, добавляем https:
+            if (url.startsWith('//')) {
+                return 'https:' + url;
+            }
+            
+            // Если URL относительный (начинается с /), делаем его абсолютным
+            if (url.startsWith('/')) {
+                return window.location.origin + url;
+            }
+            
+            // Иначе возвращаем как есть
+            return url;
+        };
+
+        const handleImageError = (event) => {
+            // Если изображение не загрузилось, скрываем его
+            event.target.style.display = 'none';
+            console.warn('Failed to load image:', event.target.src);
+        };
+
+        const handleImageLoad = (event) => {
+            // Изображение успешно загружено
+            event.target.style.display = '';
+        };
+
         const addToCart = (product) => {
             // TODO: Implement cart functionality
             console.log('Add to cart:', product);
@@ -1009,6 +1044,9 @@ export default {
             getPageNumbers,
             formatPrice,
             getProductPrice,
+            getImageUrl,
+            handleImageError,
+            handleImageLoad,
             addToCart,
             getActiveFiltersCount,
             gridColumns,

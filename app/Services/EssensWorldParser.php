@@ -832,33 +832,33 @@ class EssensWorldParser
         if ($priceWrap) {
             // Ищем цену со скидкой (discounted-price) - это новая цена
             $discountedPriceNode = $xpath->query(".//div[contains(@class, 'discounted-price')]", $priceWrap)->item(0);
-            if ($discountedPriceNode) {
-                $priceText = trim($discountedPriceNode->textContent);
-                $price = $this->extractPrice($priceText);
-                if ($price && $price > 0) {
-                    $product['discounted_price'] = $price;
-                    $product['price'] = $price; // Основная цена = цена со скидкой
-                }
+        if ($discountedPriceNode) {
+            $priceText = trim($discountedPriceNode->textContent);
+            $price = $this->extractPrice($priceText);
+            if ($price && $price > 0) {
+                $product['discounted_price'] = $price;
+                $product['price'] = $price; // Основная цена = цена со скидкой
             }
-            
+        }
+        
             // Старая цена (цена до скидки) - в div с классами price и discount
             $oldPriceNode = $xpath->query(".//div[contains(@class, 'price') and contains(@class, 'discount')]", $priceWrap)->item(0);
-            if ($oldPriceNode) {
-                $priceText = trim($oldPriceNode->textContent);
+        if ($oldPriceNode) {
+            $priceText = trim($oldPriceNode->textContent);
+            $price = $this->extractPrice($priceText);
+            if ($price && $price > 0) {
+                $product['old_price'] = $price;
+            }
+        }
+        
+            // Если не нашли цену со скидкой, ищем обычную цену (без класса discount)
+        if (!$product['price']) {
+                $regularPriceNode = $xpath->query(".//div[contains(@class, 'price') and not(contains(@class, 'discount'))]", $priceWrap)->item(0);
+            if ($regularPriceNode) {
+                $priceText = trim($regularPriceNode->textContent);
                 $price = $this->extractPrice($priceText);
                 if ($price && $price > 0) {
-                    $product['old_price'] = $price;
-                }
-            }
-            
-            // Если не нашли цену со скидкой, ищем обычную цену (без класса discount)
-            if (!$product['price']) {
-                $regularPriceNode = $xpath->query(".//div[contains(@class, 'price') and not(contains(@class, 'discount'))]", $priceWrap)->item(0);
-                if ($regularPriceNode) {
-                    $priceText = trim($regularPriceNode->textContent);
-                    $price = $this->extractPrice($priceText);
-                    if ($price && $price > 0) {
-                        $product['price'] = $price;
+                    $product['price'] = $price;
                     }
                 }
             }
@@ -903,11 +903,11 @@ class EssensWorldParser
         $recommendedPriceWrap = $xpath->query("//div[contains(@class, 'recommended-price-wrap')] | //div[contains(@class, 'details-section-wrap')]//div[contains(@class, 'recommended-price-wrap')]")->item(0);
         if ($recommendedPriceWrap) {
             $recommendedPriceNode = $xpath->query(".//div[contains(@class, 'recommended-price')]", $recommendedPriceWrap)->item(0);
-            if ($recommendedPriceNode) {
-                $priceText = trim($recommendedPriceNode->textContent);
-                $price = $this->extractPrice($priceText);
-                if ($price && $price > 0) {
-                    $product['recommended_price'] = $price;
+        if ($recommendedPriceNode) {
+            $priceText = trim($recommendedPriceNode->textContent);
+            $price = $this->extractPrice($priceText);
+            if ($price && $price > 0) {
+                $product['recommended_price'] = $price;
                 }
             }
         } else {

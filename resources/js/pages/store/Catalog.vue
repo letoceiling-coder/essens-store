@@ -563,7 +563,10 @@
                         <div
                             v-for="product in products"
                             :key="product.id"
-                            class="bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                            :class="[
+                                'bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group',
+                                gridColumns === 2 ? 'flex flex-col' : ''
+                            ]"
                             @click="$router.push(`/product/${product.id}`)"
                         >
                             <div class="aspect-square bg-muted flex items-center justify-center overflow-hidden relative">
@@ -605,7 +608,7 @@
                             </div>
                             <div :class="[
                                 gridColumns === 1 ? 'p-4' :
-                                gridColumns === 2 ? 'p-2' :
+                                gridColumns === 2 ? 'p-2 flex flex-col flex-grow' :
                                 gridColumns === 4 ? 'p-3' : 
                                 gridColumns === 5 ? 'p-2' : 'p-4'
                             ]">
@@ -624,12 +627,12 @@
                                     {{ product.description }}
                                 </p>
                                 <div :class="[
-                                    'flex items-center justify-between',
-                                    gridColumns === 2 ? 'gap-2' :
-                                    gridColumns === 5 ? 'flex-col gap-2' : ''
+                                    gridColumns === 2 ? 'mt-auto flex flex-col gap-1.5' :
+                                    gridColumns === 5 ? 'flex flex-col gap-2' :
+                                    'flex items-center justify-between'
                                 ]">
                                     <div :class="[
-                                        gridColumns === 2 ? 'flex-1' :
+                                        gridColumns === 2 ? 'w-full' :
                                         gridColumns === 5 ? 'w-full' : ''
                                     ]">
                                         <div :class="[
@@ -639,14 +642,14 @@
                                             <span :class="[
                                                 'font-bold text-primary',
                                                 gridColumns === 1 ? 'text-xl' :
-                                                gridColumns === 2 ? 'text-sm' :
+                                                gridColumns === 2 ? 'text-base' :
                                                 gridColumns === 4 ? 'text-lg' : 
                                                 gridColumns === 5 ? 'text-base' : 'text-xl'
                                             ]">{{ formatPrice(getProductPrice(product)) }}</span>
                                             <span v-if="(product.recommended_price && product.old_price) || product.promotions?.length > 0" :class="[
                                                 'text-muted-foreground line-through',
                                                 gridColumns === 1 ? 'ml-2 text-sm' :
-                                                gridColumns === 2 ? 'ml-0 text-[10px]' :
+                                                gridColumns === 2 ? 'ml-0 text-xs' :
                                                 gridColumns === 4 ? 'ml-1.5 text-xs' : 
                                                 gridColumns === 5 ? 'ml-1 text-[10px]' : 'ml-2 text-sm'
                                             ]">
@@ -658,9 +661,9 @@
                                         @click.stop="addToCart(product)"
                                         :disabled="!product.in_stock"
                                         :class="[
-                                            'bg-primary text-primary-contrast rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0',
+                                            'bg-primary text-primary-contrast rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed',
                                             gridColumns === 1 ? 'px-4 py-2 text-sm' :
-                                            gridColumns === 2 ? 'px-2 py-1.5 text-xs' :
+                                            gridColumns === 2 ? 'px-2 py-1.5 text-xs w-full' :
                                             gridColumns === 4 ? 'px-3 py-1.5 text-xs' : 
                                             gridColumns === 5 ? 'px-2 py-1 text-[10px] w-full' : 'px-4 py-2 text-sm'
                                         ]"
@@ -1076,8 +1079,8 @@ export default {
 
         const setGridColumns = (columns) => {
             if (columns >= 1 && columns <= 5) {
-                gridColumns.value = columns;
-                localStorage.setItem('catalogGridColumns', columns.toString());
+            gridColumns.value = columns;
+            localStorage.setItem('catalogGridColumns', columns.toString());
             }
         };
 

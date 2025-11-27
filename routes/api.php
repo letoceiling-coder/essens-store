@@ -11,14 +11,14 @@ use App\Http\Controllers\Api\Store\CategoryController;
 use App\Http\Controllers\Api\Store\ProductController;
 use App\Http\Controllers\Api\Admin\ParsingController;
 use App\Http\Controllers\Api\Admin\TelegramBotController;
+use App\Http\Controllers\Api\DeployController;
 use Illuminate\Support\Facades\Route;
-
-// Deploy endpoint (публичный, но защищен секретным ключом)
-// Доступен по адресу: /api/deploy
-Route::post('/deploy', [\App\Http\Controllers\DeployController::class, 'deploy']);
 
 // Telegram webhook endpoint (публичный, для получения обновлений от Telegram)
 Route::post('/telegram/webhook/{token}', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'handle']);
+
+// Deploy endpoint (защищён секретным ключом в заголовке Deploy-Secret)
+Route::post('/deploy', [DeployController::class, 'deploy']);
 
 // Публичные роуты
 Route::prefix('auth')->group(function () {

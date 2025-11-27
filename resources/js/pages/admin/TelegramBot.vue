@@ -80,16 +80,24 @@
                                     <input
                                         v-model="botForm.name"
                                         type="text"
+                                        placeholder="Например: My Telegram Bot"
                                         class="w-full h-10 px-3 border border-border rounded bg-background"
                                     />
+                                    <p class="text-xs text-muted-foreground mt-1">
+                                        Внутреннее имя бота для идентификации в системе
+                                    </p>
                                 </div>
                                 <div>
-                                    <label class="text-sm font-medium mb-1 block">Токен</label>
+                                    <label class="text-sm font-medium mb-1 block">Токен бота</label>
                                     <input
                                         v-model="botForm.token"
                                         type="password"
+                                        placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
                                         class="w-full h-10 px-3 border border-border rounded bg-background"
                                     />
+                                    <p class="text-xs text-muted-foreground mt-1">
+                                        Токен бота от @BotFather. Формат: число:строка
+                                    </p>
                                 </div>
                             </div>
                             <div class="flex gap-2">
@@ -116,26 +124,39 @@
                         <div v-if="activeTab === 'commands'" class="space-y-4 mt-4">
                             <div>
                                 <label class="text-sm font-medium mb-1 block">Команды бота</label>
+                                <p class="text-xs text-muted-foreground mb-2">
+                                    Команды отображаются в меню бота. Команда должна начинаться с / (например: /start, /help)
+                                </p>
                                 <div
                                     v-for="(command, index) in commandsForm"
                                     :key="index"
                                     class="flex gap-2 mb-2"
                                 >
-                                    <input
-                                        v-model="command.command"
-                                        type="text"
-                                        placeholder="Команда (например: start)"
-                                        class="flex-1 h-10 px-3 border border-border rounded bg-background"
-                                    />
-                                    <input
-                                        v-model="command.description"
-                                        type="text"
-                                        placeholder="Описание"
-                                        class="flex-1 h-10 px-3 border border-border rounded bg-background"
-                                    />
+                                    <div class="flex-1">
+                                        <input
+                                            v-model="command.command"
+                                            type="text"
+                                            placeholder="/start"
+                                            class="w-full h-10 px-3 border border-border rounded bg-background"
+                                        />
+                                        <p class="text-xs text-muted-foreground mt-1">
+                                            Команда (без /, например: start, help, settings)
+                                        </p>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input
+                                            v-model="command.description"
+                                            type="text"
+                                            placeholder="Начать работу с ботом"
+                                            class="w-full h-10 px-3 border border-border rounded bg-background"
+                                        />
+                                        <p class="text-xs text-muted-foreground mt-1">
+                                            Описание команды (до 256 символов)
+                                        </p>
+                                    </div>
                                     <button
                                         @click="removeCommand(index)"
-                                        class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                                        class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors h-10"
                                     >
                                         Удалить
                                     </button>
@@ -178,10 +199,10 @@
                                     rows="4"
                                     maxlength="512"
                                     class="w-full px-3 py-2 border border-border rounded bg-background"
-                                    placeholder="Полное описание бота (до 512 символов)"
+                                    placeholder="Например: Умный бот для управления вашим магазином. Помогает отслеживать заказы, управлять товарами и отвечать на вопросы клиентов."
                                 ></textarea>
                                 <p class="text-xs text-muted-foreground mt-1">
-                                    {{ descriptionForm.description?.length || 0 }} / 512
+                                    {{ descriptionForm.description?.length || 0 }} / 512 символов. Отображается в профиле бота
                                 </p>
                             </div>
                             <div>
@@ -191,10 +212,10 @@
                                     rows="2"
                                     maxlength="120"
                                     class="w-full px-3 py-2 border border-border rounded bg-background"
-                                    placeholder="Краткое описание бота (до 120 символов)"
+                                    placeholder="Например: Бот для управления магазином"
                                 ></textarea>
                                 <p class="text-xs text-muted-foreground mt-1">
-                                    {{ descriptionForm.short_description?.length || 0 }} / 120
+                                    {{ descriptionForm.short_description?.length || 0 }} / 120 символов. Отображается в результатах поиска
                                 </p>
                             </div>
                             <div>
@@ -203,9 +224,12 @@
                                     v-model="descriptionForm.name"
                                     type="text"
                                     maxlength="64"
+                                    placeholder="Например: My Store Bot"
                                     class="w-full h-10 px-3 border border-border rounded bg-background"
-                                    placeholder="Имя бота (до 64 символов)"
                                 />
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    {{ descriptionForm.name?.length || 0 }} / 64 символов. Отображается в профиле бота
+                                </p>
                             </div>
                             <div class="flex gap-2">
                                 <button
@@ -242,12 +266,15 @@
                                 <input
                                     ref="photoInput"
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/jpeg,image/png,image/jpg"
                                     @change="handlePhotoChange"
                                     class="w-full h-10 px-3 border border-border rounded bg-background"
                                 />
                                 <p class="text-xs text-muted-foreground mt-1">
-                                    Максимальный размер: 10MB. Форматы: JPG, PNG
+                                    Максимальный размер: 10MB. Форматы: JPG, PNG. Рекомендуемый размер: 640x640 пикселей
+                                </p>
+                                <p class="text-xs text-blue-500 mt-1">
+                                    💡 Совет: Используйте квадратное изображение для лучшего отображения
                                 </p>
                             </div>
                             <div class="flex gap-2">
@@ -274,26 +301,40 @@
                                     v-model="menuForm.type"
                                     class="w-full h-10 px-3 border border-border rounded bg-background"
                                 >
-                                    <option value="default">По умолчанию</option>
-                                    <option value="commands">Команды</option>
-                                    <option value="web_app">Web App</option>
+                                    <option value="default">По умолчанию (стандартное меню Telegram)</option>
+                                    <option value="commands">Команды (показывать список команд)</option>
+                                    <option value="web_app">Web App (кнопка для веб-приложения)</option>
                                 </select>
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    Тип кнопки меню, отображаемой в интерфейсе бота
+                                </p>
                             </div>
                             <div v-if="menuForm.type === 'web_app'">
                                 <label class="text-sm font-medium mb-1 block">Текст кнопки</label>
                                 <input
                                     v-model="menuForm.text"
                                     type="text"
+                                    placeholder="Например: Открыть магазин"
                                     class="w-full h-10 px-3 border border-border rounded bg-background"
                                 />
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    Текст, который будет отображаться на кнопке меню (до 64 символов)
+                                </p>
                             </div>
                             <div v-if="menuForm.type === 'web_app'">
                                 <label class="text-sm font-medium mb-1 block">URL Web App</label>
                                 <input
                                     v-model="menuForm.web_app.url"
                                     type="url"
+                                    placeholder="https://example.com/app"
                                     class="w-full h-10 px-3 border border-border rounded bg-background"
                                 />
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    URL веб-приложения, которое откроется при нажатии на кнопку. Должен использовать HTTPS
+                                </p>
+                                <p class="text-xs text-blue-500 mt-1">
+                                    💡 Совет: URL должен быть доступен по HTTPS и соответствовать требованиям Telegram Web Apps
+                                </p>
                             </div>
                             <div class="flex gap-2">
                                 <button
@@ -334,16 +375,24 @@
                                         type="number"
                                         min="1"
                                         max="100"
+                                        placeholder="40"
                                         class="w-full h-10 px-3 border border-border rounded bg-background"
                                     />
+                                    <p class="text-xs text-muted-foreground mt-1">
+                                        Максимальное количество одновременных HTTPS соединений (1-100). По умолчанию: 40
+                                    </p>
                                 </div>
                                 <div>
                                     <label class="text-sm font-medium mb-1 block">IP адрес (опционально)</label>
                                     <input
                                         v-model="webhookForm.ip_address"
                                         type="text"
+                                        placeholder="192.168.1.1"
                                         class="w-full h-10 px-3 border border-border rounded bg-background"
                                     />
+                                    <p class="text-xs text-muted-foreground mt-1">
+                                        Разрешенный IP-адрес для отправки обновлений. Оставьте пустым, чтобы разрешить все IP
+                                    </p>
                                 </div>
                             </div>
                             <div>
@@ -351,9 +400,15 @@
                                 <input
                                     v-model="webhookForm.secret_token"
                                     type="text"
+                                    placeholder="my_secret_token_12345"
                                     class="w-full h-10 px-3 border border-border rounded bg-background"
-                                    placeholder="Секретный токен для проверки webhook"
                                 />
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    Секретный токен для проверки подлинности webhook. Будет отправлен в заголовке X-Telegram-Bot-Api-Secret-Token
+                                </p>
+                                <p class="text-xs text-blue-500 mt-1">
+                                    💡 Совет: Используйте случайную строку для безопасности. Telegram будет отправлять этот токен в каждом запросе
+                                </p>
                             </div>
                             <div>
                                 <label class="flex items-center gap-2 cursor-pointer">
@@ -364,14 +419,21 @@
                                     />
                                     <span class="text-sm">Удалить ожидающие обновления</span>
                                 </label>
+                                <p class="text-xs text-muted-foreground mt-1 ml-6">
+                                    Если включено, все ожидающие обновления будут удалены перед установкой webhook. Полезно при первой настройке
+                                </p>
                             </div>
                             <div>
                                 <label class="text-sm font-medium mb-1 block">Разрешенные типы обновлений</label>
+                                <p class="text-xs text-muted-foreground mb-2">
+                                    Выберите типы обновлений, которые бот будет получать. Если ничего не выбрано, будут получаться все типы
+                                </p>
                                 <div class="grid grid-cols-3 gap-2">
                                     <label
                                         v-for="updateType in updateTypes"
                                         :key="updateType"
-                                        class="flex items-center gap-2 cursor-pointer"
+                                        class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-muted/30"
+                                        :title="getUpdateTypeDescription(updateType)"
                                     >
                                         <input
                                             type="checkbox"
@@ -428,8 +490,12 @@
                             v-model="createForm.name"
                             type="text"
                             required
+                            placeholder="Например: My Telegram Bot"
                             class="w-full h-10 px-3 border border-border rounded bg-background"
                         />
+                        <p class="text-xs text-muted-foreground mt-1">
+                            Внутреннее имя бота для идентификации в системе
+                        </p>
                     </div>
                     <div>
                         <label class="text-sm font-medium mb-1 block">Токен бота</label>
@@ -437,11 +503,14 @@
                             v-model="createForm.token"
                             type="text"
                             required
-                            placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                            placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
                             class="w-full h-10 px-3 border border-border rounded bg-background"
                         />
                         <p class="text-xs text-muted-foreground mt-1">
-                            Получите токен у @BotFather в Telegram
+                            Получите токен у @BotFather в Telegram. Формат: число:строка
+                        </p>
+                        <p class="text-xs text-blue-500 mt-1">
+                            💡 Как получить: Откройте @BotFather → /newbot → следуйте инструкциям
                         </p>
                     </div>
                     <div class="flex gap-2 pt-4">
@@ -601,13 +670,27 @@ export default {
                 this.error = error.response?.data?.message || 'Ошибка при удалении бота';
             }
         },
-        selectBot(bot) {
+        async selectBot(bot) {
             this.selectedBot = bot;
             this.activeTab = 'general';
-            this.botForm = {
-                name: bot.name,
-                token: bot.token,
-            };
+            
+            // Загружаем полную информацию о боте, чтобы получить токен
+            try {
+                const response = await axios.get(`/api/admin/telegram-bot/bots/${bot.id}`);
+                const fullBot = response.data.data;
+                this.selectedBot = fullBot; // Обновляем с полной информацией
+                this.botForm = {
+                    name: fullBot.name,
+                    token: fullBot.token,
+                };
+            } catch (error) {
+                // Если не удалось загрузить, используем данные из списка
+                this.botForm = {
+                    name: bot.name,
+                    token: bot.token || '',
+                };
+            }
+            
             // Обновляем URL webhook при выборе бота
             this.updateWebhookUrl();
         },
@@ -754,11 +837,20 @@ export default {
             }
         },
         updateWebhookUrl() {
-            if (this.webhookForm.domain && this.selectedBot?.token) {
+            // Получаем токен из selectedBot или из списка ботов
+            let token = this.selectedBot?.token;
+            if (!token && this.selectedBot?.id) {
+                const bot = this.bots.find(b => b.id === this.selectedBot.id);
+                if (bot) {
+                    token = bot.token;
+                }
+            }
+            
+            if (this.webhookForm.domain && token) {
                 // Убираем протокол и слеши, если есть
                 let domain = this.webhookForm.domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
                 // Формируем полный URL
-                this.webhookForm.url = `https://${domain}/api/telegram/webhook/${this.selectedBot.token}`;
+                this.webhookForm.url = `https://${domain}/api/telegram/webhook/${token}`;
             } else if (this.webhookForm.domain) {
                 // Если токена еще нет, показываем шаблон
                 let domain = this.webhookForm.domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -768,8 +860,36 @@ export default {
             }
         },
         async setWebhook(id) {
+            // Получаем токен бота, если он не доступен
+            let token = this.selectedBot?.token;
+            if (!token) {
+                const bot = this.bots.find(b => b.id === id);
+                if (bot) {
+                    token = bot.token;
+                }
+            }
+            
+            // Проверяем, что домен указан
+            if (!this.webhookForm.domain) {
+                this.error = 'Пожалуйста, укажите домен';
+                return;
+            }
+            
+            // Проверяем, что токен доступен
+            if (!token) {
+                this.error = 'Токен бота не найден. Пожалуйста, обновите информацию о боте.';
+                return;
+            }
+            
             // Обновляем URL перед отправкой
             this.updateWebhookUrl();
+            
+            // Проверяем, что URL сформирован правильно (без {token})
+            if (!this.webhookForm.url || this.webhookForm.url.includes('{token}')) {
+                this.error = 'Не удалось сформировать URL. Проверьте, что домен указан правильно и токен бота доступен.';
+                return;
+            }
+            
             try {
                 // Используем JSON вместо FormData для правильной передачи boolean значений
                 const payload = {
@@ -792,8 +912,10 @@ export default {
                     headers: { 'Content-Type': 'application/json' },
                 });
                 alert('Webhook успешно установлен');
+                // Обновляем информацию о webhook
+                await this.getWebhookInfo(id);
             } catch (error) {
-                this.error = error.response?.data?.message || 'Ошибка при установке webhook';
+                this.error = error.response?.data?.message || error.response?.data?.errors?.url?.[0] || 'Ошибка при установке webhook';
             }
         },
         async deleteWebhook(id) {
@@ -814,6 +936,25 @@ export default {
             } catch (error) {
                 this.error = error.response?.data?.message || 'Ошибка при получении информации о webhook';
             }
+        },
+        getUpdateTypeDescription(type) {
+            const descriptions = {
+                'message': 'Обычные текстовые сообщения и медиа',
+                'edited_message': 'Отредактированные сообщения',
+                'channel_post': 'Сообщения в каналах',
+                'edited_channel_post': 'Отредактированные сообщения в каналах',
+                'inline_query': 'Inline-запросы (поиск)',
+                'chosen_inline_result': 'Выбранный результат inline-запроса',
+                'callback_query': 'Нажатия на кнопки (callback)',
+                'shipping_query': 'Запросы доставки для платежей',
+                'pre_checkout_query': 'Запросы перед оплатой',
+                'poll': 'Обновления опросов',
+                'poll_answer': 'Ответы на опросы',
+                'my_chat_member': 'Изменения статуса бота в чате',
+                'chat_member': 'Изменения статуса участников',
+                'chat_join_request': 'Запросы на присоединение к чату',
+            };
+            return descriptions[type] || 'Тип обновления';
         },
     },
 };

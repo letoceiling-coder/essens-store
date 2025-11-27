@@ -6,8 +6,9 @@ use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
+        // ВАЖНО: API роуты загружаются первыми, чтобы они обрабатывались раньше web роутов
         api: __DIR__.'/../routes/api.php',
+        web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -15,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
+        
+        // ВАЖНО: ForceJsonForApi должен быть первым, чтобы обрабатывать все API запросы
+        $middleware->prepend(\App\Http\Middleware\ForceJsonForApi::class);
         
         // Добавляем middleware для обработки API аутентификации
         $middleware->append(\App\Http\Middleware\HandleApiAuthentication::class);

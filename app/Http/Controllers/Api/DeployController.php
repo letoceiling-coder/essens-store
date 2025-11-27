@@ -439,7 +439,15 @@ class DeployController extends Controller
                 ], 500);
             }
 
-            // Очистка кеша
+            // Очистка кеша (важно: сначала очищаем route cache явно)
+            $output = [];
+            exec('cd ' . base_path() . ' && php artisan route:clear 2>&1', $output, $status);
+            $allOutput['route_cache_clear'] = ['status' => $status, 'output' => $output];
+            if ($status !== 0) {
+                Log::warning('Deploy: Route cache clear failed, but continuing', ['output' => $output, 'status' => $status]);
+            }
+            
+            // Очистка всех остальных кешей
             $output = [];
             exec('cd ' . base_path() . ' && php artisan optimize:clear 2>&1', $output, $status);
             $allOutput['cache_clear'] = ['status' => $status, 'output' => $output];
@@ -451,6 +459,14 @@ class DeployController extends Controller
                     'status' => $status,
                     'all_output' => $allOutput
                 ], 500);
+            }
+            
+            // Убеждаемся, что route cache не создан (не используем route:cache в production)
+            // Проверяем наличие route cache файла и удаляем его, если он есть
+            $routeCacheFile = base_path() . '/bootstrap/cache/routes-v7.php';
+            if (file_exists($routeCacheFile)) {
+                @unlink($routeCacheFile);
+                Log::info('Deploy: Removed route cache file', ['file' => $routeCacheFile]);
             }
 
             // Получаем информацию о текущем коммите

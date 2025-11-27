@@ -100,8 +100,19 @@ fi
 # Выполнение миграций
 $PHP_CMD artisan migrate --force || echo "Warning: migrations failed, but continuing..."
 
-# Очистка кеша
+# Очистка кеша (важно: сначала очищаем route cache явно)
+$PHP_CMD artisan route:clear || echo "Warning: route cache clear failed, but continuing..."
+
+# Очистка всех остальных кешей
 $PHP_CMD artisan optimize:clear || echo "Warning: cache clear failed, but continuing..."
+
+# Убеждаемся, что route cache не создан (не используем route:cache в production)
+# Проверяем наличие route cache файла и удаляем его, если он есть
+ROUTE_CACHE_FILE="bootstrap/cache/routes-v7.php"
+if [ -f "$ROUTE_CACHE_FILE" ]; then
+    rm -f "$ROUTE_CACHE_FILE"
+    echo "Info: Removed route cache file: $ROUTE_CACHE_FILE"
+fi
 
 echo "Deployment successful"
 

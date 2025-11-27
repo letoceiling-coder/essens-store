@@ -5,13 +5,12 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
 
 class ForceJsonForApi
 {
     /**
      * Принудительно устанавливаем JSON для всех API запросов
-     * И перехватываем API запросы, которые попали в web роуты
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -19,46 +18,28 @@ class ForceJsonForApi
         if ($request->is('api/*')) {
             // Принудительно устанавливаем Accept: application/json
             $request->headers->set('Accept', 'application/json');
-            
-            // Проверяем, зарегистрирован ли этот роут в API
-            $route = $request->route();
-            
-            // Если роут не найден или это web роут, возвращаем 404 JSON
-            if (!$route || !$route->getPrefix() || $route->getPrefix() !== 'api') {
-                // Проверяем, есть ли такой роут в API
-                $apiRoute = Route::getRoutes()->match($request);
-                
-                // Если роут не найден или это не API роут, возвращаем 404
-                if (!$apiRoute || !$apiRoute->getPrefix() || $apiRoute->getPrefix() !== 'api') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'API route not found',
-                        'error' => 'Route conflict: API request handled by web router. Please clear route cache on server.',
-                        'path' => $request->path(),
-                    ], 404);
-                }
-            }
         }
         
+        // Пропускаем запрос дальше
         $response = $next($request);
         
-        // Если это API запрос и ответ не JSON, возвращаем ошибку
-        if ($request->is('api/*')) {
-            // Проверяем, что ответ JSON
+        // Если это API запрос и ответ не JSON (и это не редирект), логируем предупреждение
+        if ($request->is('api/*') && $response->getStatusCode() !== 302) {
             $contentType = $response->headers->get('Content-Type');
+            
+            // Проверяем, что ответ JSON (но не блокируем, если это ошибка 404 от самого Laravel)
             if (!$contentType || strpos($contentType, 'application/json') === false) {
-                // Если это не JSON, возвращаем ошибку
-                return response()->json([
-                    'success' => false,
-                    'message' => 'API endpoint должен возвращать JSON',
-                    'error' => 'Route conflict: API route handled by web router. Please clear route cache on server.',
-                    'path' => $request->path(),
-                    'content_type' => $contentType,
-                ], 500);
+                // Если это не JSON и не HTML (редирект), логируем
+                if (strpos($contentType, 'text/html') === false) {
+                    Log::warning('ForceJsonForApi: API response is not JSON', [
+                        'path' => $request->path(),
+                        'content_type' => $contentType,
+                        'status' => $response->getStatusCode(),
+                    ]);
+                }
             }
         }
         
         return $response;
     }
 }
-

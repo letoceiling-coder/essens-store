@@ -283,16 +283,33 @@ class DeployController extends Controller
             
             // Проверяем наличие скрипта deploy.sh
             $deployScript = $projectPath . '/deploy.sh';
-            $useDeployScript = file_exists($deployScript) && is_executable($deployScript);
+            $deployScriptExists = file_exists($deployScript);
+            $deployScriptExecutable = $deployScriptExists && is_executable($deployScript);
+            
+            // Логируем состояние перед проверкой
+            Log::info('Deploy: Pre-deploy.sh check', [
+                'git_pull_status' => $status,
+                'composer_cmd' => $composerCmd,
+                'npm_cmd' => $npmCmd,
+                'composer_found' => (bool)$composerCmd,
+                'npm_found' => (bool)$npmCmd,
+                'deploy_script_exists' => $deployScriptExists,
+                'deploy_script_executable' => $deployScriptExecutable,
+                'should_use_deploy_script' => ($status !== 0 || !$composerCmd || !$npmCmd) && $deployScriptExists
+            ]);
             
             // Если git pull не работает ИЛИ composer/npm не найдены, используем deploy.sh
             if ($status !== 0 || !$composerCmd || !$npmCmd) {
-                if ($useDeployScript) {
+                if ($deployScriptExists) {
                     Log::info('Deploy: Using deploy.sh script', [
                         'script' => $deployScript,
+                        'exists' => $deployScriptExists,
+                        'executable' => $deployScriptExecutable,
                         'reason' => $status !== 0 ? 'git_pull_failed' : 'tools_not_found',
                         'composer_found' => (bool)$composerCmd,
-                        'npm_found' => (bool)$npmCmd
+                        'npm_found' => (bool)$npmCmd,
+                        'composer_cmd' => $composerCmd,
+                        'npm_cmd' => $npmCmd
                     ]);
                     
                     // Выполняем скрипт deploy.sh, который загружает PATH и NVM

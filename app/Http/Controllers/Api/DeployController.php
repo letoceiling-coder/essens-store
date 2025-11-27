@@ -182,7 +182,8 @@ class DeployController extends Controller
 
             // Проверка наличия удаленного репозитория
             $output = [];
-            exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' remote -v 2>&1', $output, $status);
+            $gitEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' GIT_CONFIG_NOSYSTEM=1 ';
+            exec($gitEnv . 'cd ' . $projectPath . ' && git remote -v 2>&1', $output, $status);
             $allOutput['git_remote_check'] = ['status' => $status, 'output' => $output];
             if ($status !== 0 || empty($output)) {
                 Log::warning('Deploy: No remote repository configured', ['output' => $output]);
@@ -191,8 +192,14 @@ class DeployController extends Controller
             // Обновление файлов из git
             // Используем переменную окружения GIT_SAFE_DIRECTORY (работает без изменения конфигурации)
             $output = [];
-            $gitEnv = 'GIT_SAFE_DIRECTORY=' . escapeshellarg($projectPath) . ' GIT_CONFIG_NOSYSTEM=1 ';
+            // Пробуем несколько вариантов для обхода проблемы с правами
             exec($gitEnv . 'cd ' . $projectPath . ' && git pull origin master 2>&1', $output, $status);
+            
+            // Если не работает, пробуем с флагом -c safe.directory
+            if ($status !== 0) {
+                $output = [];
+                exec($gitEnv . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' pull origin master 2>&1', $output, $status);
+            }
             $allOutput['git_pull'] = ['status' => $status, 'output' => $output];
             if ($status !== 0) {
                 Log::error('Deploy: Git pull failed', ['output' => $output, 'status' => $status]);

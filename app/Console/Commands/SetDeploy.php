@@ -120,12 +120,26 @@ class SetDeploy extends Command
             } else {
                 $this->error('Ошибка обновления на сервере');
                 $this->error('HTTP Status: ' . $response->status());
+                
+                // Пытаемся получить JSON ответ
                 $errorData = $response->json();
-                if (isset($errorData['error'])) {
-                    $this->error('Ошибка: ' . $errorData['error']);
-                }
-                if (isset($errorData['output'])) {
-                    $this->error('Вывод: ' . implode("\n", (array)$errorData['output']));
+                if ($errorData) {
+                    if (isset($errorData['error'])) {
+                        $this->error('Ошибка: ' . $errorData['error']);
+                    }
+                    if (isset($errorData['message'])) {
+                        $this->error('Сообщение: ' . $errorData['message']);
+                    }
+                    if (isset($errorData['output'])) {
+                        $this->error('Вывод: ' . implode("\n", (array)$errorData['output']));
+                    }
+                    // Выводим весь ответ для отладки
+                    $this->line('Полный ответ сервера:');
+                    $this->line(json_encode($errorData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                } else {
+                    // Если не JSON, выводим тело ответа как есть
+                    $body = $response->body();
+                    $this->error('Тело ответа: ' . $body);
                 }
                 return Command::FAILURE;
             }

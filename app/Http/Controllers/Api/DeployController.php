@@ -106,13 +106,30 @@ class DeployController extends Controller
             
             // Проверка, что это git репозиторий
             // Используем переменную окружения GIT_SAFE_DIRECTORY для обхода проблемы с правами
+            // GIT_CONFIG_NOSYSTEM игнорирует системные настройки, которые могут требовать прав
             $env = [
                 'GIT_SAFE_DIRECTORY' => $projectPath,
+                'GIT_CONFIG_NOSYSTEM' => '1',
                 'HOME' => $_SERVER['HOME'] ?? '/tmp',
             ];
             $envString = '';
             foreach ($env as $key => $value) {
                 $envString .= $key . '=' . escapeshellarg($value) . ' ';
+            }
+            
+            // Сначала пытаемся добавить в локальный config (не требует прав суперпользователя)
+            exec('cd ' . $projectPath . ' && git config --local safe.directory ' . $gitSafePath . ' 2>&1', $localOutput, $localStatus);
+            if ($localStatus === 0) {
+                Log::info('Deploy: Added directory to local git config', [
+                    'path' => $projectPath, 
+                    'output' => $localOutput,
+                ]);
+            } else {
+                Log::warning('Deploy: Could not add to local git config', [
+                    'path' => $projectPath, 
+                    'output' => $localOutput,
+                    'status' => $localStatus
+                ]);
             }
             
             $output = [];
@@ -121,17 +138,17 @@ class DeployController extends Controller
                 // Проверяем, не является ли это проблемой с правами доступа
                 $outputStr = implode(' ', $output);
                 if (strpos($outputStr, 'dubious ownership') !== false) {
-                    // Пытаемся использовать локальный git config в репозитории
-                    exec('cd ' . $projectPath . ' && git config --local --add safe.directory ' . $gitSafePath . ' 2>&1', $localOutput, $localStatus);
-                    Log::info('Deploy: Added directory to local git config', [
-                        'path' => $projectPath, 
-                        'output' => $localOutput,
-                        'status' => $localStatus
-                    ]);
-                    
-                    // Повторяем проверку с переменной окружения
+                    // Пробуем использовать только переменную окружения без флага -c
                     $output = [];
-                    exec($envString . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' rev-parse --git-dir 2>&1', $output, $status);
+                    exec($envString . 'cd ' . $projectPath . ' && git rev-parse --git-dir 2>&1', $output, $status);
+                    
+                    // Если все еще не работает, пробуем с другим подходом
+                    if ($status !== 0) {
+                        // Используем GIT_CONFIG_NOSYSTEM для игнорирования системных настроек
+                        $envStringNoSystem = $envString . 'GIT_CONFIG_NOSYSTEM=1 ';
+                        $output = [];
+                        exec($envStringNoSystem . 'cd ' . $projectPath . ' && git -c safe.directory=' . $gitSafePath . ' rev-parse --git-dir 2>&1', $output, $status);
+                    }
                 }
                 
                 if ($status !== 0) {
@@ -142,7 +159,7 @@ class DeployController extends Controller
                         'error' => 'Git репозиторий не найден или не инициализирован',
                         'output' => $output,
                         'status' => $status,
-                        'hint' => 'Попробуйте выполнить на сервере: cd ' . $projectPath . ' && git config --local --add safe.directory ' . $projectPath
+                        'hint' => 'Выполните на сервере: cd ' . $projectPath . ' && git config --local safe.directory ' . $projectPath . ' (это не требует sudo)'
                     ], 500);
                 }
             }

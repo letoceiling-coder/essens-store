@@ -552,11 +552,11 @@
                         tag="div"
                         :class="[
                             'grid',
-                            gridColumns === 1 ? 'grid-cols-1 gap-4' : '',
-                            gridColumns === 2 ? 'grid-cols-1 sm:grid-cols-2 gap-4' : '',
-                            gridColumns === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : '',
-                            gridColumns === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : '',
-                            gridColumns === 5 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3' : '',
+                            gridColumns === 1 && 'grid-cols-1 gap-4',
+                            gridColumns === 2 && 'grid-cols-1 sm:grid-cols-2 gap-4',
+                            gridColumns === 3 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6',
+                            gridColumns === 4 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4',
+                            gridColumns === 5 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3',
                             { 'opacity-50': isApplyingFilters }
                         ]"
                     >
@@ -702,7 +702,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import StoreLayout from '@/layouts/StoreLayout.vue';
@@ -723,28 +723,31 @@ export default {
         
         // Grid columns (default: 1 для мобильной версии, 4 для десктопа)
         const getDefaultGridColumns = () => {
+            if (typeof window === 'undefined') {
+                return 4; // SSR fallback
+            }
+            
             const saved = localStorage.getItem('catalogGridColumns');
+            const isMobile = window.innerWidth < 1024;
+            
             if (saved) {
                 const savedValue = parseInt(saved);
-                // Если сохраненное значение для мобильной версии (1 или 2), используем его
-                if (savedValue === 1 || savedValue === 2) {
-                    // Проверяем, мобильная ли версия
-                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                        return savedValue;
+                // Проверяем, что значение валидное (1-5)
+                if (savedValue >= 1 && savedValue <= 5) {
+                    // Если мобильная версия и сохранено значение для десктопа (3-5), используем 1
+                    if (isMobile && savedValue >= 3) {
+                        return 1;
                     }
-                }
-                // Если сохраненное значение для десктопа (3, 4, 5), используем его
-                if (savedValue >= 3 && savedValue <= 5) {
-                    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-                        return savedValue;
+                    // Если десктоп и сохранено значение для мобильной (1-2), используем 4
+                    if (!isMobile && savedValue <= 2) {
+                        return 4;
                     }
+                    // Иначе используем сохраненное значение
+                    return savedValue;
                 }
             }
             // По умолчанию: 1 для мобильной, 4 для десктопа
-            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                return 1;
-            }
-            return 4;
+            return isMobile ? 1 : 4;
         };
         const gridColumns = ref(getDefaultGridColumns());
         
@@ -1063,8 +1066,10 @@ export default {
         };
 
         const setGridColumns = (columns) => {
-            gridColumns.value = columns;
-            localStorage.setItem('catalogGridColumns', columns.toString());
+            if (columns >= 1 && columns <= 5) {
+                gridColumns.value = columns;
+                localStorage.setItem('catalogGridColumns', columns.toString());
+            }
         };
 
         // Watch for route changes

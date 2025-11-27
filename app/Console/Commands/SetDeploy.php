@@ -41,8 +41,38 @@ class SetDeploy extends Command
         
         // Отправка изменений в git
         $this->info('Отправка изменений в Git...');
-        $gitCommand = 'git add . && git commit -m "Deploy update" && git push ' . ($gitUrl ?: 'origin master');
-        exec($gitCommand, $output, $status);
+        $gitRemote = $gitUrl ?: 'origin master';
+        
+        // Проверяем, есть ли изменения для коммита
+        exec('git status --porcelain', $statusOutput, $statusCode);
+        $hasChanges = !empty($statusOutput);
+        
+        if ($hasChanges) {
+            // Добавляем все изменения
+            $this->line('Обнаружены изменения, добавляем в индекс...');
+            exec('git add .', $output, $status);
+            if ($status !== 0) {
+                $this->error('Ошибка при добавлении файлов в git');
+                $this->error(implode("\n", $output));
+                return Command::FAILURE;
+            }
+            
+            // Создаем коммит
+            $this->line('Создание коммита...');
+            exec('git commit -m "Deploy update"', $output, $status);
+            if ($status !== 0) {
+                $this->error('Ошибка при создании коммита');
+                $this->error(implode("\n", $output));
+                return Command::FAILURE;
+            }
+            $this->info('Коммит создан успешно');
+        } else {
+            $this->info('Нет изменений для коммита');
+        }
+        
+        // Отправляем изменения на сервер (даже если не было новых коммитов, могут быть неотправленные)
+        $this->line('Отправка изменений на удаленный репозиторий...');
+        exec('git push ' . $gitRemote, $output, $status);
         if ($status !== 0) {
             $this->error('Ошибка отправки на git');
             $this->error(implode("\n", $output));

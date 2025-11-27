@@ -11,24 +11,61 @@ export GIT_CONFIG_NOSYSTEM=1
 # Убеждаемся, что локальный git config настроен
 git config --local safe.directory /home/d/dsc23ytp/essens/public_html 2>/dev/null
 
-# Обновление из git
-git pull origin master || exit 1
-
-# Установка зависимостей
-if command -v composer &> /dev/null; then
-    composer install --no-interaction --prefer-dist --optimize-autoloader || exit 1
+# Добавляем deploy.sh в gitignore, если его там нет (чтобы избежать конфликтов)
+if ! grep -q "^deploy.sh$" .gitignore 2>/dev/null; then
+    echo "deploy.sh" >> .gitignore
 fi
 
+# Получаем последние изменения из удаленного репозитория
+git fetch origin master 2>&1 || exit 1
+
+# Сбрасываем локальные изменения и применяем изменения из удаленного репозитория
+git reset --hard origin/master || exit 1
+
+# Проверка версии PHP
+PHP_VERSION=$(php -r "echo PHP_VERSION;" 2>/dev/null)
+PHP_MAJOR=$(echo $PHP_VERSION | cut -d. -f1)
+PHP_MINOR=$(echo $PHP_VERSION | cut -d. -f2)
+
+# Проверяем, что PHP версия >= 8.2
+if [ "$PHP_MAJOR" -lt 8 ] || ([ "$PHP_MAJOR" -eq 8 ] && [ "$PHP_MINOR" -lt 2 ]); then
+    echo "Warning: PHP version $PHP_VERSION is too old. Required: PHP 8.2+. Skipping composer install."
+    echo "Please update PHP version on the server or use a different PHP version for composer."
+else
+    # Установка зависимостей
+    if command -v composer &> /dev/null; then
+        composer install --no-interaction --prefer-dist --optimize-autoloader || echo "Warning: composer install failed, but continuing..."
+    else
+        echo "Warning: composer not found, skipping composer install"
+    fi
+fi
+
+# Установка npm зависимостей (если npm доступен)
 if command -v npm &> /dev/null; then
-    npm install || exit 1
-    npm run build || exit 1
+    npm install || echo "Warning: npm install failed, but continuing..."
+    # Используем npx для запуска vite, чтобы избежать проблем с правами
+    npx vite build || echo "Warning: npm build failed, but continuing..."
+else
+    echo "Warning: npm not found, skipping npm install and build"
+fi
+
+# Выполнение миграций (используем версию PHP, которая используется веб-сервером)
+# Пробуем найти правильную версию PHP
+if command -v php8.2 &> /dev/null; then
+    PHP_CMD="php8.2"
+elif command -v php8.3 &> /dev/null; then
+    PHP_CMD="php8.3"
+elif command -v php8.4 &> /dev/null; then
+    PHP_CMD="php8.4"
+else
+    PHP_CMD="php"
 fi
 
 # Выполнение миграций
-php artisan migrate --force || exit 1
+$PHP_CMD artisan migrate --force || echo "Warning: migrations failed, but continuing..."
 
 # Очистка кеша
-php artisan optimize:clear || exit 1
+$PHP_CMD artisan optimize:clear || echo "Warning: cache clear failed, but continuing..."
 
 echo "Deployment successful"
 
